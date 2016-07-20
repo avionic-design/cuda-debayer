@@ -8,7 +8,6 @@ AM_INIT_AUTOMAKE([no-dist-gzip dist-xz foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE
 
-AC_PROG_CXX
 AM_PROG_CC_C_O
 AC_PROG_RANLIB
 AC_PROG_INSTALL
@@ -26,11 +25,6 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 	CFLAGS="$CFLAGS -O0 -g3"
 ])
 
-AC_CHECK_HEADERS([readline/readline.h])
-AC_CHECK_LIB([readline], [readline],
-	[lv_use_readline=yes],
-	[lv_use_readline=no])
-
 AC_MSG_CHECKING([for OpenCV 2.2.x or newer])
 AC_CHECK_LIB(opencv_core, cvCreateImage, [opencv="yes";
 	AC_DEFINE(HAVE_OPENCV_22X, 1,
@@ -42,6 +36,22 @@ AS_IF([test "x$opencv" = "xyes"],
 	[AC_MSG_ERROR([OpenCV 2.2 or greater not found])])
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
+
+AX_CHECK_CUDA
+
+# Set gencode flags for compilation and linking.
+# Gencode flags allow compilation and linking for other compute capabilities
+# than the highest compute capabilty of the used GPU.
+# The compute capability features are discribed in
+# http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
+# The compute capability of the used GPU can be read with the NVIDIA application
+# deviceQuery, which can be found in the SDK.
+#~ GENCODE_FLAGS="-gencode arch=compute_32,code=sm_32"
+GENCODE_FLAGS=""
+AC_SUBST(GENCODE_FLAGS)
+
+# Set CXX compiler to nvcc for linking with CUDA object file
+AC_PROG_CXX([nvcc])
 
 AS_IF([test "x$USE_NLS" = "xyes"], [
 	AC_DEFINE([USE_NLS], [1], [Define to 1 if NLS support is enabled])

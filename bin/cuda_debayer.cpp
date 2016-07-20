@@ -20,8 +20,10 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "camera_device.h"
+#include "bayer2rgb.h"
 
 static const char short_options[] = "d:e:g:ho";
 
@@ -53,12 +55,16 @@ int main(int argc, char **argv)
 	cv::Mat image = cv::Mat::zeros(1, 1, CV_8UC3);
 	const std::string window = "Display";
 	std::string dev_name = "/dev/video0";
+	cudaError_t ret_cuda = cudaSuccess;
 	struct camera_vars *cam_vars;
+	struct cuda_vars *gpu_vars;
 	bool displayed = false;
 	int exposure = -1;
 	int ret_val = 0;
+	cv::Mat o_image;
 	long int l_int;
 	int gain = -1;
+	uint8_t *frame;
 
 	for (;;) {
 		int idx;
@@ -122,6 +128,14 @@ int main(int argc, char **argv)
 	if (ret_val != 0)
 		goto cleanup;
 
+	ret_cuda = bayer2rgb_init(&gpu_vars,
+			camera_device_get_width(cam_vars),
+			camera_device_get_height(cam_vars));
+	if (ret_cuda != cudaSuccess) {
+		ret_val = -EINVAL;
+		goto cleanup;
+	}
+
 	image = cv::Mat(camera_device_get_height(cam_vars),
 			camera_device_get_width(cam_vars), CV_8UC3);
 
@@ -131,7 +145,7 @@ int main(int argc, char **argv)
 			camera_device_get_height(cam_vars));
 
 	while (true) {
-		ret_val = camera_device_read_frame(cam_vars, &(image.data));
+		ret_val = camera_device_read_frame(cam_vars, &frame);
 		if (ret_val == -EAGAIN)
 			continue;
 
@@ -141,7 +155,14 @@ int main(int argc, char **argv)
 		if (ret_val != 0)
 			goto cleanup;
 
-		cv::imshow(window, image);
+		ret_cuda = bayer2rgb_process(gpu_vars, frame, &(image.data));
+		if (ret_cuda != cudaSuccess) {
+			ret_val = -EINVAL;
+			goto cleanup;
+		}
+
+		cv::cvtColor(image, o_image, CV_RGB2BGR);
+		cv::imshow(window, o_image);
 		cv::waitKey(1);
 	}
 
@@ -152,9 +173,9 @@ cleanup:
 		camera_device_done(cam_vars);
 
 	if (gpu_vars != NULL) {
-		ret_cuda = bayer2rgb_done(gpu_vars);
+		ret_cuda = bayer2rgb_free(gpu_vars);
 		if (ret_cuda != cudaSuccess)
-			return -EPERM;
+			return -EINVAL;
 	}
 
 	cv::destroyAllWindows();
