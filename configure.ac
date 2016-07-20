@@ -10,6 +10,7 @@ AM_MAINTAINER_MODE
 
 AC_PROG_CXX
 AM_PROG_CC_C_O
+AC_PROG_RANLIB
 AC_PROG_INSTALL
 AM_NLS
 
@@ -40,6 +41,8 @@ AS_IF([test "x$opencv" = "xyes"],
 	AC_SUBST(OPENCV_LD_FLAGS)],
 	[AC_MSG_ERROR([OpenCV 2.2 or greater not found])])
 
+AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
+
 AS_IF([test "x$USE_NLS" = "xyes"], [
 	AC_DEFINE([USE_NLS], [1], [Define to 1 if NLS support is enabled])
 ])
@@ -65,6 +68,7 @@ fi
 AC_SUBST(AM_MAKEFLAGS)
 
 AC_OUTPUT([
+	src/Makefile
 	bin/Makefile
 	Makefile
 ])
