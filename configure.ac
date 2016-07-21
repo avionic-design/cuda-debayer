@@ -5,6 +5,7 @@ AC_CONFIG_HEADER(config.h)
 AC_CANONICAL_HOST
 
 AM_INIT_AUTOMAKE([no-dist-gzip dist-xz foreign])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE
 
 AC_PROG_CXX
@@ -54,6 +55,14 @@ AC_ARG_ENABLE([werror],
 if test "x$enable_werror" = "xyes"; then
 	CFLAGS="$CFLAGS -Werror"
 fi
+
+# Loose the directory print messages in silent mode
+if test x"$AM_DEFAULT_VERBOSITY" = x"0"; then
+	if make --help 2>&1 | grep -q no-print-directory; then
+		AM_MAKEFLAGS="$AM_MAKEFLAGS --no-print-directory"
+	fi
+fi
+AC_SUBST(AM_MAKEFLAGS)
 
 AC_OUTPUT([
 	bin/Makefile
