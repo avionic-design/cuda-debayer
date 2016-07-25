@@ -59,6 +59,7 @@ int main(int argc, char **argv)
 	struct camera_vars *cam_vars;
 	struct cuda_vars *gpu_vars;
 	bool displayed = false;
+	cudaStream_t stream;
 	int exposure = -1;
 	int ret_val = 0;
 	cv::Mat o_image;
@@ -130,14 +131,14 @@ int main(int argc, char **argv)
 
 	ret_cuda = bayer2rgb_init(&gpu_vars,
 			camera_device_get_width(cam_vars),
-			camera_device_get_height(cam_vars));
+			camera_device_get_height(cam_vars), 4);
 	if (ret_cuda != cudaSuccess) {
 		ret_val = -EINVAL;
 		goto cleanup;
 	}
 
 	image = cv::Mat(camera_device_get_height(cam_vars),
-			camera_device_get_width(cam_vars), CV_8UC3);
+			camera_device_get_width(cam_vars), CV_8UC4);
 
 	cv::namedWindow(window, CV_WINDOW_NORMAL);
 	cv::resizeWindow(window,
@@ -155,13 +156,14 @@ int main(int argc, char **argv)
 		if (ret_val != 0)
 			goto cleanup;
 
-		ret_cuda = bayer2rgb_process(gpu_vars, frame, &(image.data));
+		ret_cuda = bayer2rgb_process(gpu_vars, frame, &(image.data),
+				&stream, false);
 		if (ret_cuda != cudaSuccess) {
 			ret_val = -EINVAL;
 			goto cleanup;
 		}
 
-		cv::cvtColor(image, o_image, CV_RGB2BGR);
+		cv::cvtColor(image, o_image, CV_RGBA2BGRA);
 		cv::imshow(window, o_image);
 		cv::waitKey(1);
 	}

@@ -111,11 +111,18 @@ __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 		/* blue at blue */
 		out[(y + 1) * elemCols + (x + 1) * bpp + 2] =
 				in[PIX(x + 1, y + 1, imgw)];
+
+		if (bpp == 4) {
+			out[y * elemCols + x * bpp + 3] = 255;
+			out[y * elemCols + (x + 1) * bpp + 3] = 255;
+			out[(y + 1) * elemCols + x * bpp + 3] = 255;
+			out[(y + 1) * elemCols + (x + 1) * bpp + 3] = 255;
+		}
 	}
 }
 
 cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
-		uint8_t **output)
+		uint8_t **output, cudaStream_t *stream, bool get_dev_ptr)
 {
 	cudaError_t ret_val;
 
@@ -137,21 +144,26 @@ cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 			gpu_vars->streams[(gpu_vars->cnt % 2)]
 		>>>(gpu_vars->d_input[(gpu_vars->cnt % 2)],
 			gpu_vars->d_bilinear[(gpu_vars->cnt % 2)],
-			gpu_vars->width, gpu_vars->height,
-			gpu_vars->bpp);
+			gpu_vars->width, gpu_vars->height, gpu_vars->bpp);
 
-	ret_val = cudaMemcpyAsync(*output,
-		gpu_vars->d_bilinear[gpu_vars->cnt % 2],
-		gpu_vars->width * gpu_vars->height * sizeof(uint8_t) * 3,
-		cudaMemcpyDeviceToHost,
-		gpu_vars->streams[gpu_vars->cnt % 2]);
-	if (ret_val != cudaSuccess) {
-		fprintf(stderr, "Device to Host %d, %s\n", gpu_vars->cnt % 2,
-				cudaGetErrorString(ret_val));
-		return ret_val;
+	if (get_dev_ptr) {
+		*output = (uint8_t *)gpu_vars->d_bilinear[(gpu_vars->cnt % 2)];
+	} else {
+		ret_val = cudaMemcpyAsync(*output,
+			gpu_vars->d_bilinear[gpu_vars->cnt % 2],
+			gpu_vars->width * gpu_vars->height * sizeof(uint8_t) *
+			gpu_vars->bpp, cudaMemcpyDeviceToHost,
+			gpu_vars->streams[gpu_vars->cnt % 2]);
+		if (ret_val != cudaSuccess) {
+			fprintf(stderr, "Device to Host %d, %s\n",
+					gpu_vars->cnt % 2,
+					cudaGetErrorString(ret_val));
+			return ret_val;
+		}
 	}
 
-	ret_val = cudaStreamSynchronize(gpu_vars->streams[gpu_vars->cnt % 2]);
+	ret_val = cudaStreamSynchronize(gpu_vars->streams[
+			gpu_vars->cnt % 2]);
 	if (ret_val != cudaSuccess) {
 		fprintf(stderr, "device synchronize\n");
 		return ret_val;
@@ -194,7 +206,7 @@ cudaError_t alloc_create_cuda_data(struct cuda_vars *gpu_vars, uint8_t cnt)
 }
 
 cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
-		uint32_t height)
+		uint32_t height, uint8_t bpp)
 {
 	struct cuda_vars *gpu_vars;
 	cudaError_t ret_val;
@@ -210,7 +222,7 @@ cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
 	gpu_vars->width = width;
 	gpu_vars->height = height;
 	gpu_vars->cnt = 0;
-	gpu_vars->bpp = 3;
+	gpu_vars->bpp = bpp;
 
 	for (i = 0; i < 2; i++) {
 		ret_val = alloc_create_cuda_data(gpu_vars, i);

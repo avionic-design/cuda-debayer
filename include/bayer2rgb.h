@@ -21,10 +21,10 @@
 struct cuda_vars;
 
 cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars, uint32_t width,
-		uint32_t height);
+		uint32_t height, uint8_t bpp);
 cudaError_t bayer2rgb_free(struct cuda_vars *gpu_vars);
 
 cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
-		uint8_t **output);
+		uint8_t **output, cudaStream_t *stream, bool get_dev_ptr);
 
 #endif
