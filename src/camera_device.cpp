@@ -344,10 +344,8 @@ cleanup:
 static int init_device(struct camera_vars *cam_vars,
 		std::string dev_name)
 {
-	struct v4l2_cropcap cropcap;
 	struct v4l2_capability cap;
 	struct v4l2_format format;
-	struct v4l2_crop crop;
 	unsigned int size;
 	unsigned int min;
 
@@ -374,29 +372,6 @@ static int init_device(struct camera_vars *cam_vars,
 		fprintf(stderr, "%s does not support streaming i/o\n",
 				dev_name.c_str());
 		return -errno;
-	}
-
-	CLEAR(cropcap);
-	cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	if (xioctl(cam_vars->fd, VIDIOC_CROPCAP, &cropcap) == -1) {
-		perror("VIDIOC_CROPCAP");
-		return -errno;
-	}
-
-	CLEAR(crop);
-	crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	crop.c = cropcap.defrect;
-	if (xioctl(cam_vars->fd, VIDIOC_S_CROP, &crop) == -1) {
-		if (errno == EINVAL) {
-			perror("VIDIOC_S_CROP EINVAL");
-			return -errno;
-		} else if (errno == ENOTTY) {
-			/* VIDIOC_S_CROP has no effect here */
-			printf("cropping not supported\n");
-		} else {
-			return -errno;
-		}
 	}
 
 	CLEAR(format);
