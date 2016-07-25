@@ -16,6 +16,7 @@
 #include <string>
 #include <errno.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -56,6 +57,7 @@ int main(int argc, char **argv)
 	bool displayed = false;
 	int exposure = -1;
 	int ret_val = 0;
+	long int l_int;
 	int gain = -1;
 
 	for (;;) {
@@ -68,16 +70,14 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'd':
 			dev_name = optarg;
-			if (access(dev_name, F_OK) == -1) {
+			if (access(dev_name.c_str(), F_OK) == -1) {
 				printf("device %s does not exist\n",
-						dev_name);
+						dev_name.c_str());
 				return EXIT_FAILURE;
 			}
 			break;
 
 		case 'e':
-			long int l_int;
-
 			l_int = strtol(optarg, NULL, 10);
 			if (errno == ERANGE || l_int > INT_MAX ||
 				l_int < INT_MIN) {
@@ -89,8 +89,6 @@ int main(int argc, char **argv)
 			break;
 
 		case 'g':
-			long int l_int;
-
 			l_int = strtol(optarg, NULL, 10);
 			if (errno == ERANGE || l_int > INT_MAX ||
 				l_int < INT_MIN) {

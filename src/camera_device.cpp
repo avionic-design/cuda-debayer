@@ -391,6 +391,9 @@ static int init_device(struct camera_vars *cam_vars,
 		if (errno == EINVAL) {
 			perror("VIDIOC_S_CROP EINVAL");
 			return -errno;
+		} else if (errno == ENOTTY) {
+			/* VIDIOC_S_CROP has no effect here */
+			printf("cropping not supported\n");
 		} else {
 			return -errno;
 		}
