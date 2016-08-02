@@ -20,20 +20,43 @@ AC_ARG_ENABLE([debug],
 	[], [enable_debug=no])
 AC_MSG_RESULT([$enable_debug])
 
+AC_ARG_WITH([opencv], [  --without-opencv        Compile without OpenCV],
+		[], [with_opencv=yes])
+
+AS_IF([test "x$with_opencv" != xno],
+	[AC_MSG_NOTICE([with OpenCV])
+	AC_MSG_CHECKING([for OpenCV 2.2.x or newer])
+	AC_CHECK_LIB(opencv_core, cvCreateImage, [opencv="yes";
+		AC_DEFINE(HAVE_OPENCV_22X, 1,
+		[Define HAVE_OPENCV_22X if OpenCV 2.2.x is installed])])
+	AC_DEFINE([HAVE_OPENCV], [1], [Define if you have OpenCV libs])
+
+	AS_IF([test "x$opencv" = "xyes"],
+		[OPENCV_LD_FLAGS=`pkg-config --libs opencv`
+		AC_SUBST(OPENCV_LD_FLAGS)],
+		[AC_MSG_ERROR([OpenCV 2.2 or greater not found])])], []
+)
+
+AC_ARG_WITH([opengl], [  --without-opengl        Compile without OpenGL],
+		[], [with_opengl=yes])
+
+AS_IF([test "x$with_opengl" != xno],
+	[AC_MSG_NOTICE([with OpenGL])
+	AC_CHECK_LIB(GL, glBegin, [GL_LIBS=-lGL], AC_MSG_ERROR([GL required]))
+	AC_CHECK_LIB(GLU, gluBeginCurve, [GLU_LIBS=-lGLU], AC_MSG_ERROR([GLU required]))
+	AC_CHECK_LIB(GLEW, glewInit, [GLEW_LIBS=-lGLEW], AC_MSG_ERROR([GLEW required]))
+	AC_CHECK_LIB(glut, glutInit, [GLUT_LIBS=-lglut], AC_MSG_ERROR([glut required]))
+	AC_DEFINE([HAVE_OPENGL], [1], [Define if you have OpenGL libs])
+
+	# Set LD_FLAGS for OpenGL linking
+	AC_SUBST(OPENGL_LD_FLAGS, "$GL_LIBS $GLU_LIBS $GLEW_LIBS $GLUT_LIBS")
+	AC_SUBST(OPENGL_FLAGS, "$GLEW_CFLAGS $GL_CFLAGS")], []
+)
+
 AS_IF([test "x$enable_debug" = "xyes"], [
 	AC_DEFINE([ENABLE_DEBUG], [1], [whether debugging is enabled])
 	CFLAGS="$CFLAGS -O0 -g3"
 ])
-
-AC_MSG_CHECKING([for OpenCV 2.2.x or newer])
-AC_CHECK_LIB(opencv_core, cvCreateImage, [opencv="yes";
-	AC_DEFINE(HAVE_OPENCV_22X, 1,
-	[Define HAVE_OPENCV if OpenCV installed])])
-
-AS_IF([test "x$opencv" = "xyes"],
-	[OPENCV_LD_FLAGS=`pkg-config --libs opencv`
-	AC_SUBST(OPENCV_LD_FLAGS)],
-	[AC_MSG_ERROR([OpenCV 2.2 or greater not found])])
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
 

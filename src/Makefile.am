@@ -5,7 +5,11 @@ lib_camera_device_cuda_a_CPPFLAGS = \
 
 lib_camera_device_cuda_a_SOURCES = \
 	camera_device.cpp \
-	bayer2rgb.cu
+	bayer2rgb.cu \
+	gl_display.cpp
+
+gl_display_CFLAGS = \
+	@OPENGL_FLAGS@
 
 NVCC_CPPFLAGS = @CUDA_CFLAGS@ \
 	-I$(top_srcdir)/include

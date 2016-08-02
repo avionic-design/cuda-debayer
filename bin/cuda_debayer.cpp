@@ -18,21 +18,35 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_OPENCV
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#endif
+
+#include<cuda_profiler_api.h>
 
 #include "camera_device.h"
 #include "bayer2rgb.h"
 
-static const char short_options[] = "d:e:g:ho";
+#ifdef HAVE_OPENGL
+#include "gl_display.h"
+#endif
+
+enum display_type{NOT, OPENCV, OPENGL};
+
+static const char short_options[] = "d:e:g:ho:";
 
 static const struct option long_options[] = {
 	{"device",	required_argument,	NULL, 'd'},
 	{"exposure",	required_argument,	NULL, 'e'},
 	{"gain",	required_argument,	NULL, 'g'},
 	{"help",	no_argument,		NULL, 'h'},
-	{"output",	no_argument,		NULL, 'o'},
+	{"output",	required_argument,	NULL, 'o'},
 	{0, 0, 0, 0 }
 };
 
@@ -41,33 +55,54 @@ static void usage(FILE *fp, const char *argv)
 	fprintf(fp,
 		"Usage: %s [-h|--help] \n"
 		"   or: %s [-d|--device=/dev/video0] [-e|--exposure=30000] \n"
-		"		[-g|--gain=100] [-s|--scale=1] [-o|--opencv]\n\n"
+		"		[-g|--gain=100] [-s|--scale=1] [-o|--output=opengl]\n\n"
 		"Options:\n"
 		"-d | --device        Video device name [default:/dev/video0]\n"
-		"-e | --exposure      Set exposure time\n"
-		"-g | --gain          Set analog gain\n"
+		"-e | --exposure      Set exposure time [1..199000; default: 30000]\n"
+		"-g | --gain          Set analog gain   [0..244; default: 100]\n"
 		"-h | --help          Print this message\n"
-		"-o | --output        Outputs stream to screen\n"
+		"-o | --output        Outputs stream over OpenCV/OpenGL [opencv, opengl; default: opengl]\n"
 		"",
 		argv, argv);
 }
 
 int main(int argc, char **argv)
 {
-	cv::Mat image = cv::Mat::zeros(1, 1, CV_8UC3);
+#ifdef HAVE_OPENCV
+	cv::Mat image = cv::Mat::zeros(1, 1, CV_8UC4);
+#endif
+#ifdef HAVE_OPENGL
+	struct gl_display_vars *gl_vars = NULL;
+#endif
 	const std::string window = "Display";
 	std::string dev_name = "/dev/video0";
+	struct camera_vars *cam_vars = NULL;
 	cudaError_t ret_cuda = cudaSuccess;
-	struct camera_vars *cam_vars;
-	struct cuda_vars *gpu_vars;
-	bool displayed = false;
+	struct cuda_vars *gpu_vars = NULL;
+	uint8_t displayed = NOT;
+	struct timespec start;
+	struct timespec stop;
+	int exposure = 30000;
 	cudaStream_t stream;
-	int exposure = -1;
 	int ret_val = 0;
+	uint8_t *output;
+#ifdef HAVE_OPENCV
 	cv::Mat o_image;
+#endif
+	int nframes = 0;
 	long int l_int;
-	int gain = -1;
 	uint8_t *frame;
+	double elapsed;
+	int gain = -1;
+	double fps;
+
+#ifdef HAVE_OPENCV
+	displayed = OPENCV;
+#endif
+
+#ifdef HAVE_OPENGL
+	displayed = OPENGL;
+#endif
 
 	for (;;) {
 		int idx;
@@ -113,7 +148,25 @@ int main(int argc, char **argv)
 			return EXIT_SUCCESS;
 
 		case 'o':
-			displayed = true;
+			if (strcmp(optarg, "opencv") == 0) {
+#ifndef HAVE_OPENCV
+				printf("No OpenCV support\n");
+				return EXIT_FAILURE;
+#endif
+				displayed = OPENCV;
+			} else if (strcmp(optarg, "opengl") == 0) {
+#ifndef HAVE_OPENGL
+				printf("No OpenGL support\n");
+				return EXIT_FAILURE;
+#endif
+				displayed = OPENGL;
+			} else {
+#ifdef HAVE_OPENGL
+				displayed = OPENGL;
+#elif HAVE_OPENCV
+				displayed = OPENCV;
+#endif
+			}
 			break;
 
 		default:
@@ -122,10 +175,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!displayed) {
-		printf("not displayed\n");
-		return EXIT_SUCCESS;
-	}
+	cudaDeviceReset();
+	cudaProfilerStart();
 
 	ret_val = camera_device_init(&cam_vars, dev_name, exposure, gain);
 	if (ret_val != 0)
@@ -139,13 +190,24 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	image = cv::Mat(camera_device_get_height(cam_vars),
-			camera_device_get_width(cam_vars), CV_8UC4);
-
-	cv::namedWindow(window, CV_WINDOW_NORMAL);
-	cv::resizeWindow(window,
-			camera_device_get_width(cam_vars),
-			camera_device_get_height(cam_vars));
+	if (displayed == OPENGL) {
+#ifdef HAVE_OPENGL
+		printf("displayed with OpenGL\n");
+		gl_display_init(&gl_vars, camera_device_get_width(cam_vars),
+				camera_device_get_height(cam_vars), argc, argv);
+#endif
+	} else if (displayed == OPENCV) {
+#ifdef HAVE_OPENCV
+		printf("displayed with OpenCV\n");
+			cv::namedWindow(window, CV_WINDOW_NORMAL);
+		cv::resizeWindow(window,
+				camera_device_get_width(cam_vars),
+				camera_device_get_height(cam_vars));
+		image = cv::Mat(camera_device_get_height(cam_vars),
+				camera_device_get_width(cam_vars), CV_8UC4);
+		output = image.data;
+#endif
+	}
 
 	while (true) {
 		ret_val = camera_device_read_frame(cam_vars, &frame);
@@ -158,16 +220,38 @@ int main(int argc, char **argv)
 		if (ret_val != 0)
 			goto cleanup;
 
-		ret_cuda = bayer2rgb_process(gpu_vars, frame, &(image.data),
-				&stream, false);
+		ret_cuda = bayer2rgb_process(gpu_vars, frame, &output,
+				&stream, (displayed == OPENCV) ? false : true);
 		if (ret_cuda != cudaSuccess) {
 			ret_val = -EINVAL;
 			goto cleanup;
 		}
 
-		cv::cvtColor(image, o_image, CV_RGBA2BGRA);
-		cv::imshow(window, o_image);
-		cv::waitKey(1);
+		if (displayed == OPENGL) {
+#ifdef HAVE_OPENGL
+			nframes++;
+
+			clock_gettime(CLOCK_REALTIME, &stop);
+			elapsed = ((double)stop.tv_sec - (double)start.tv_sec)
+					+ ((double)stop.tv_nsec -
+					(double)start.tv_nsec) / 1000000000L;
+			if (elapsed >= 1.0f) {
+				fps = ((double)nframes) / elapsed;
+				gl_display_fps(gl_vars, fps);
+				nframes = 0;
+				clock_gettime(CLOCK_REALTIME, &start);
+			}
+
+			gl_display_show(gl_vars, (unsigned int *)output,
+					stream);
+#endif
+		} else if (displayed == OPENCV) {
+#ifdef HAVE_OPENCV
+			cv::cvtColor(image, o_image, CV_RGBA2BGRA);
+			cv::imshow(window, o_image);
+			cv::waitKey(1);
+#endif
+		}
 	}
 
 	ret_val = EXIT_SUCCESS;
@@ -182,7 +266,18 @@ cleanup:
 			return -EINVAL;
 	}
 
-	cv::destroyAllWindows();
+#ifdef HAVE_OPENGL
+	if (gl_vars != NULL)
+		ret_val = gl_display_free(gl_vars);
+#endif
+
+#ifdef HAVE_OPENCV
+	if (displayed == OPENCV) {
+		image.release();
+		o_image.release();
+		cv::destroyAllWindows();
+	}
+#endif
 
 	return ret_val;
 }
