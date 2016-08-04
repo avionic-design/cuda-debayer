@@ -14,6 +14,7 @@
  */
 
 #include "bayer2rgb.h"
+#include "bayer2rgb_kernel.h"
 
 #define PIX(x, y, imgw)		((x) + (y) * (imgw))
 #define LEFT(x, y, imgw)	((x) - 1 + (y) * (imgw))

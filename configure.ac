@@ -75,6 +75,15 @@ AC_SUBST(GENCODE_FLAGS)
 # Set CXX compiler to nvcc for linking with CUDA object file
 AC_PROG_CXX([nvcc])
 
+PKG_PROG_PKG_CONFIG()
+
+# Unit tests wich check
+PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], [have_check=yes], [have_check=no])
+AS_IF([test "x$have_check" != xno],
+	AC_SUBST(CHECK_LIBS, "-lcheck_pic -lrt -lm")
+)
+
+
 AS_IF([test "x$USE_NLS" = "xyes"], [
 	AC_DEFINE([USE_NLS], [1], [Define to 1 if NLS support is enabled])
 ])
@@ -102,5 +111,6 @@ AC_SUBST(AM_MAKEFLAGS)
 AC_OUTPUT([
 	src/Makefile
 	bin/Makefile
+	tests/Makefile
 	Makefile
 ])

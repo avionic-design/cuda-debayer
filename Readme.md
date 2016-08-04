@@ -29,3 +29,10 @@ enabled by default.
         - Outputs stream over OpenCV/OpenGL [opencv, opengl; default: opengl]
     - -s | --scale
         - Decreasing size by factor [1..20; default: 1]
+
+### Tests:
+
+Run tests with: make check
+
+* The test includes a test whether the CUDA kernel calculate the correct
+      values.
