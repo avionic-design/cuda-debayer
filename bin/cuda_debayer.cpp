@@ -39,7 +39,9 @@ static const struct option long_options[] = {
 static void usage(FILE *fp, const char *argv)
 {
 	fprintf(fp,
-		"Usage: %s [options]\n\n"
+		"Usage: %s [-h|--help] \n"
+		"   or: %s [-d|--device=/dev/video0] [-e|--exposure=30000] \n"
+		"		[-g|--gain=100] [-s|--scale=1] [-o|--opencv]\n\n"
 		"Options:\n"
 		"-d | --device        Video device name [default:/dev/video0]\n"
 		"-e | --exposure      Set exposure time\n"
@@ -47,7 +49,7 @@ static void usage(FILE *fp, const char *argv)
 		"-h | --help          Print this message\n"
 		"-o | --output        Outputs stream to screen\n"
 		"",
-		argv);
+		argv, argv);
 }
 
 int main(int argc, char **argv)
