@@ -146,7 +146,8 @@ static int compile_GLSL_program(GLuint *program_p)
 	return 0;
 }
 
-static bool initGL(gl_display_vars *gl_vars, int *argc, char **argv)
+static bool initGL(gl_display_vars *gl_vars, float scale, int *argc,
+		char **argv)
 {
 	float white[] = { 1.0f, 1.0f, 1.0f, 1.0f }; /* RGBA color for white */
 	float red[] = { 1.0f, 0.1f, 0.1f, 1.0f }; /* RGBA color for red */
@@ -154,7 +155,7 @@ static bool initGL(gl_display_vars *gl_vars, int *argc, char **argv)
 	/* Create GL context */
 	glutInit(argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE | GLUT_DEPTH);
-	glutInitWindowSize(gl_vars->width, gl_vars->height);
+	glutInitWindowSize(gl_vars->width * scale, gl_vars->height * scale);
 	gl_vars->GLUT_window_handle = glutCreateWindow("Debayer Frames");
 
 	check_gl_error(__LINE__, "error during create GL context");
@@ -179,12 +180,12 @@ static bool initGL(gl_display_vars *gl_vars, int *argc, char **argv)
 
 	glDisable(GL_DEPTH_TEST);
 
-	glViewport(0, 0, gl_vars->width, gl_vars->height);
+	glViewport(0, 0, gl_vars->width * scale, gl_vars->height * scale);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(60.0, (GLfloat)(gl_vars->width) /
-			(GLfloat)(gl_vars->height), 0.1f, 10.0f);
+	gluPerspective(60.0, (GLfloat)(gl_vars->width * scale) /
+			(GLfloat)(gl_vars->height * scale), 0.1f, 10.0f);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -234,7 +235,7 @@ static int createTextureDst(gl_display_vars *gl_vars)
 }
 
 int gl_display_init(gl_display_vars **gl_vars_p, uint32_t width,
-		uint32_t height, int argc, char **argv)
+		uint32_t height, float scale, int argc, char **argv)
 {
 	gl_display_vars *gl_vars;
 	cudaError_t ret_cuda;
@@ -251,7 +252,7 @@ int gl_display_init(gl_display_vars **gl_vars_p, uint32_t width,
 	gl_vars->width = width;
 	gl_vars->height = height;
 
-	if (initGL(gl_vars, &argc, argv) == false) {
+	if (initGL(gl_vars, scale, &argc, argv) == false) {
 		printf("failed to init GL\n");
 		ret_val = -ENOSYS;
 		goto cleanup;

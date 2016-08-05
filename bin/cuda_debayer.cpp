@@ -37,9 +37,11 @@
 #include "gl_display.h"
 #endif
 
+#define MAX_DECREASE 20
+
 enum display_type{NOT, OPENCV, OPENGL};
 
-static const char short_options[] = "d:e:g:ho:";
+static const char short_options[] = "d:e:g:ho:s:";
 
 static const struct option long_options[] = {
 	{"device",	required_argument,	NULL, 'd'},
@@ -47,6 +49,7 @@ static const struct option long_options[] = {
 	{"gain",	required_argument,	NULL, 'g'},
 	{"help",	no_argument,		NULL, 'h'},
 	{"output",	required_argument,	NULL, 'o'},
+	{"scale",	required_argument,	NULL, 's'},
 	{0, 0, 0, 0 }
 };
 
@@ -62,8 +65,9 @@ static void usage(FILE *fp, const char *argv)
 		"-g | --gain          Set analog gain   [0..244; default: 100]\n"
 		"-h | --help          Print this message\n"
 		"-o | --output        Outputs stream over OpenCV/OpenGL [opencv, opengl; default: opengl]\n"
+		"-s | --scale         Decreasing size by factor [1..%i; default: 1]\n"
 		"",
-		argv, argv);
+		argv, argv, MAX_DECREASE);
 }
 
 int main(int argc, char **argv)
@@ -84,6 +88,7 @@ int main(int argc, char **argv)
 	struct timespec stop;
 	int exposure = 30000;
 	cudaStream_t stream;
+	float scale = 1.0f;
 	int ret_val = 0;
 	uint8_t *output;
 #ifdef HAVE_OPENCV
@@ -169,6 +174,20 @@ int main(int argc, char **argv)
 			}
 			break;
 
+		case 's':
+			l_int = strtoul(optarg, NULL, 10);
+			if (errno == ERANGE || l_int > MAX_DECREASE ||
+				l_int < 0) {
+				printf("argument of -s out of range\n");
+				return EXIT_FAILURE;
+			} else if (l_int == 0) {
+				printf("invalid argument for scale (-s)\n");
+				return EXIT_FAILURE;
+			}
+
+			scale = 1.0f / l_int;
+			break;
+
 		default:
 			usage(stderr, argv[0]);
 			return EXIT_FAILURE;
@@ -194,15 +213,16 @@ int main(int argc, char **argv)
 #ifdef HAVE_OPENGL
 		printf("displayed with OpenGL\n");
 		gl_display_init(&gl_vars, camera_device_get_width(cam_vars),
-				camera_device_get_height(cam_vars), argc, argv);
+				camera_device_get_height(cam_vars), scale, argc,
+				argv);
 #endif
 	} else if (displayed == OPENCV) {
 #ifdef HAVE_OPENCV
 		printf("displayed with OpenCV\n");
 			cv::namedWindow(window, CV_WINDOW_NORMAL);
 		cv::resizeWindow(window,
-				camera_device_get_width(cam_vars),
-				camera_device_get_height(cam_vars));
+				camera_device_get_width(cam_vars) * scale,
+				camera_device_get_height(cam_vars) * scale);
 		image = cv::Mat(camera_device_get_height(cam_vars),
 				camera_device_get_width(cam_vars), CV_8UC4);
 		output = image.data;

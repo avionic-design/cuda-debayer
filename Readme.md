@@ -13,7 +13,7 @@ enabled by default.
 
 * Usage: 	cuda_debayer [-h|--help]
 * or:		cuda_debayer [-d|--device=/dev/video0] [-e|--exposure=30000]
-			[-g|--gain=100] [-o|--output=opengl]
+			[-g|--gain=100] [-o|--output=opengl] [-s|--scale=1]
 	* on a platform with OpenCV and OpenGL runtime library
 
 +    Options:
@@ -27,3 +27,5 @@ enabled by default.
         - Print help message
     - -o | --output
         - Outputs stream over OpenCV/OpenGL [opencv, opengl; default: opengl]
+    - -s | --scale
+        - Decreasing size by factor [1..20; default: 1]

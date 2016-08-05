@@ -13,7 +13,7 @@
 struct gl_display_vars;
 
 int gl_display_init(gl_display_vars **gl_vars_p, uint32_t width,
-		uint32_t height, int argc, char **argv);
+		uint32_t height, float scale, int argc, char **argv);
 int gl_display_free(gl_display_vars *gl_vars);
 
 int gl_display_show(gl_display_vars *gl_vars, uint32_t *odata,
