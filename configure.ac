@@ -46,8 +46,7 @@ AX_CHECK_CUDA
 # http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
 # The compute capability of the used GPU can be read with the NVIDIA application
 # deviceQuery, which can be found in the SDK.
-#~ GENCODE_FLAGS="-gencode arch=compute_32,code=sm_32"
-GENCODE_FLAGS=""
+GENCODE_FLAGS="-gencode arch=compute_32,code=sm_32"
 AC_SUBST(GENCODE_FLAGS)
 
 # Set CXX compiler to nvcc for linking with CUDA object file
