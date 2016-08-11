@@ -1,5 +1,5 @@
 AC_PREREQ(2.61)
-AC_INIT([cuda_debayer], [0.2.0])
+AC_INIT([cuda_debayer], [0.2.1])
 AC_CONFIG_SRCDIR([bin/cuda_debayer.cpp])
 AC_CONFIG_HEADER(config.h)
 AC_CANONICAL_HOST
