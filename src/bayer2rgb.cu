@@ -25,6 +25,10 @@
 #define TR(x, y, imgw)		((x) + 1 + ((y) - 1) * (imgw))
 #define BR(x, y, imgw)		((x) + 1 + ((y) + 1) * (imgw))
 
+#define RED 0
+#define GREEN 1
+#define BLUE 2
+
 struct cuda_vars {
 	cudaArray *data[2];
 
@@ -48,69 +52,86 @@ struct cuda_vars {
  *
  * Computes the Bilear Interpolation of missing coloured pixel from Bayer pattern.
  * Output is RGB.
+ *
+ * Each CUDA thread computes four pixels in a 2x2 square. Therefore no if
+ * conditions are required, which slows the CUDA kernels massively.
+ *
+ * The first square starts with the pixel in position 1,1. Therefore the square
+ * for each thread looks like this:
+ *
+ * B G
+ * G R
+ *
+ * This approach saves one pixel lines at the edges of the image in contrast to
+ * the first square at 2,2 with:
+ *
+ * R G
+ * G B
+ *
  */
 __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 		uint32_t imgh, uint8_t bpp)
 {
-	int x = 2 * ((blockDim.x * blockIdx.x) + threadIdx.x);
-	int y = 2 * ((blockDim.y * blockIdx.y) + threadIdx.y);
+	int x = 2 * ((blockDim.x * blockIdx.x) + threadIdx.x) + 1;
+	int y = 2 * ((blockDim.y * blockIdx.y) + threadIdx.y) + 1;
 	int elemCols = imgw * bpp;
 
 	if ((x + 2) < imgw && (x - 1) >= 0 && (y + 2) < imgh && (y - 1) >= 0) {
 		/* red at red */
-		out[y * elemCols + x * bpp] = in[PIX(x, y, imgw)];
+		out[(y + 1) * elemCols + (x + 1) * bpp + RED] =
+				in[PIX(x + 1, y + 1, imgw)];
 		/* green at red */
-		out[y * elemCols + x * bpp + 1] =
-				((uint32_t)in[TOP(x, y, imgw)] +
-				in[BOT(x, y, imgw)] +
-				in[LEFT(x, y, imgw)] +
-				in[RIGHT(x, y, imgw)]) / 4;
-		/* blue at red */
-		out[y * elemCols + x * bpp + 2] =
-				((uint32_t)in[TL(x, y, imgw)] +
-				in[TR(x, y, imgw)] +
-				in[BL(x, y, imgw)] +
-				in[BR(x, y, imgw)]) / 4;
-
-		/* red at upper right green */
-		out[y * elemCols + (x + 1) * bpp] =
-				((uint32_t)in[LEFT(x + 1, y, imgw)] +
-				in[RIGHT(x + 1, y, imgw)]) / 2;
-		/* green at upper right green */
-		out[y * elemCols + (x + 1) * bpp + 1] =
-				in[PIX(x + 1, y, imgw)];
-		/* blue at upper right green */
-		out[y * elemCols + (x + 1) * bpp + 2] =
-				((uint32_t)in[TOP(x + 1, y, imgw)] +
-				in[BOT(x + 1, y, imgw)]) / 2;
-
-		/* red at lower left green */
-		out[(y + 1) * elemCols + x * bpp] =
-				((uint32_t)in[TOP(x, y + 1, imgw)] +
-				in[BOT(x, y + 1, imgw)]) / 2;
-		/* green at lower left green */
-		out[(y + 1) * elemCols + x * bpp + 1] =
-				in[PIX(x, y + 1, imgw)];
-		/* blue at lower left green */
-		out[(y + 1) * elemCols + x * bpp + 2] =
-				((uint32_t)in[LEFT(x, y + 1, imgw)] +
-				in[RIGHT(x, y + 1, imgw)]) / 2;
-
-		/* red at blue */
-		out[(y + 1) * elemCols + (x + 1) * bpp] =
-				((uint32_t)in[TL(x + 1, y + 1, imgw)] +
-				in[TR(x + 1, y + 1, imgw)] +
-				in[BL(x + 1, y + 1, imgw)] +
-				in[BR(x + 1, y + 1, imgw)]) / 4;
-		/* green at blue */
-		out[(y + 1) * elemCols + (x + 1) * bpp + 1] =
+		out[(y + 1) * elemCols + (x + 1) * bpp + GREEN] =
 				((uint32_t)in[TOP(x + 1, y + 1, imgw)] +
 				in[BOT(x + 1, y + 1, imgw)] +
 				in[LEFT(x + 1, y + 1, imgw)] +
 				in[RIGHT(x + 1, y + 1, imgw)]) / 4;
+		/* blue at red */
+		out[(y + 1) * elemCols + (x + 1) * bpp + BLUE] =
+				((uint32_t)in[TL(x + 1, y + 1, imgw)] +
+				in[TR(x + 1, y + 1, imgw)] +
+				in[BL(x + 1, y + 1, imgw)] +
+				in[BR(x + 1, y + 1, imgw)]) / 4;
+
+		/* red at lower left green */
+		out[(y + 1) * elemCols + x * bpp + RED] =
+				((uint32_t)in[LEFT(x, y + 1, imgw)] +
+				in[RIGHT(x, y + 1, imgw)]) / 2;
+		/* green at lower left green */
+		out[(y + 1) * elemCols + x * bpp + GREEN] =
+				in[PIX(x, y + 1, imgw)];
+		/* blue at lower left green */
+		out[(y + 1) * elemCols + x * bpp + BLUE] =
+				((uint32_t)in[TOP(x, y + 1, imgw)] +
+				in[BOT(x, y + 1, imgw)]) / 2;
+
+		/* red at upper right green */
+		out[y * elemCols + (x + 1) * bpp + RED] =
+				((uint32_t)in[TOP(x + 1, y, imgw)] +
+				in[BOT(x + 1, y, imgw)]) / 2;
+		/* green at upper right green */
+		out[y * elemCols + (x + 1) * bpp + GREEN] =
+				in[PIX(x + 1, y, imgw)];
+		/* blue at upper right green */
+		out[y * elemCols + (x + 1) * bpp + BLUE] =
+				((uint32_t)in[LEFT(x + 1, y, imgw)] +
+				in[RIGHT(x + 1, y, imgw)]) / 2;
+
+		/* red at blue */
+		out[y * elemCols + x * bpp + RED] =
+				((uint32_t)in[TL(x, y, imgw)] +
+				in[TR(x, y, imgw)] +
+				in[BL(x, y, imgw)] +
+				in[BR(x, y, imgw)]) / 4;
+		/* green at blue */
+		out[y * elemCols + x * bpp + GREEN] =
+				((uint32_t)in[TOP(x, y, imgw)] +
+				in[BOT(x, y, imgw)] +
+				in[LEFT(x, y, imgw)] +
+				in[RIGHT(x, y, imgw)]) / 4;
 		/* blue at blue */
-		out[(y + 1) * elemCols + (x + 1) * bpp + 2] =
-				in[PIX(x + 1, y + 1, imgw)];
+		out[y * elemCols + x * bpp + BLUE] =
+				in[PIX(x, y, imgw)];
 
 		if (bpp == 4) {
 			out[y * elemCols + x * bpp + 3] = 255;
