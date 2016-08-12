@@ -60,6 +60,10 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
 
+# the ax_check_cuda macro only fails the configure step if enable_cuda is
+# explicitly set to yes. Since we require CUDA at all times, just set it
+# here instead of letting the user choose, for now.
+enable_cuda=yes
 AX_CHECK_CUDA
 
 # Set gencode flags for compilation and linking.
