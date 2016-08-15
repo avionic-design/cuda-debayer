@@ -9,7 +9,7 @@ lib_camera_device_cuda_a_SOURCES = \
 	gl_display.cpp
 
 gl_display_CFLAGS = \
-	$(OPENGL_FLAGS)
+	$(OPENGL_CFLAGS)
 
 NVCC_CPPFLAGS = $(CUDA_CFLAGS) \
 	-I$(top_srcdir)/include

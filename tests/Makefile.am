@@ -7,6 +7,7 @@ check_cuda_kernel_SOURCES = \
 
 check_cuda_kernel_CPPFLAGS = \
 	-I$(top_srcdir)/src \
+	$(CHECK_CFLAGS) \
 	$(CUDA_CFLAGS) \
 	$(GENCODE_FLAGS)
 

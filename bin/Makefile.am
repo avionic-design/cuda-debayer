@@ -1,9 +1,9 @@
 cuda_debayer_LDADD = \
 	$(top_build_prefix)/src/lib_camera_device_cuda.a \
-	$(OPENCV_LD_FLAGS) \
+	$(OPENCV_LIBS) \
 	$(CUDA_LDFLAGS) \
 	$(GENCODE_FLAGS) \
-	$(OPENGL_LD_FLAGS)
+	$(OPENGL_LIBS)
 
 bin_PROGRAMS = \
 	cuda_debayer
@@ -11,6 +11,8 @@ bin_PROGRAMS = \
 cuda_debayer_CPPFLAGS = \
 	-I$(top_srcdir)/src \
 	-I$(top_srcdir)/include \
+	$(OPENCV_CFLAGS) \
+	$(OPENGL_CFLAGS) \
 	$(CUDA_CFLAGS) \
 	$(GENCODE_FLAGS)
 

@@ -8,6 +8,8 @@ AM_INIT_AUTOMAKE([no-dist-gzip dist-xz foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_MAINTAINER_MODE
 
+PKG_PROG_PKG_CONFIG
+
 AM_PROG_CC_C_O
 AC_PROG_RANLIB
 AC_PROG_INSTALL
@@ -25,33 +27,18 @@ AC_ARG_WITH([opencv], [  --without-opencv        Compile without OpenCV],
 
 AS_IF([test "x$with_opencv" != xno],
 	[AC_MSG_NOTICE([with OpenCV])
-	AC_MSG_CHECKING([for OpenCV 2.2.x or newer])
-	AC_CHECK_LIB(opencv_core, cvCreateImage, [opencv="yes";
-		AC_DEFINE(HAVE_OPENCV_22X, 1,
-		[Define HAVE_OPENCV_22X if OpenCV 2.2.x is installed])])
-	AC_DEFINE([HAVE_OPENCV], [1], [Define if you have OpenCV libs])
-
-	AS_IF([test "x$opencv" = "xyes"],
-		[OPENCV_LD_FLAGS=`pkg-config --libs opencv`
-		AC_SUBST(OPENCV_LD_FLAGS)],
-		[AC_MSG_ERROR([OpenCV 2.2 or greater not found])])], []
+	PKG_CHECK_MODULES([OPENCV], [opencv >= 2.2],
+		AC_DEFINE([HAVE_OPENCV], [1], [Define if you have OpenCV libs]))]
 )
 
 AC_ARG_WITH([opengl], [  --without-opengl        Compile without OpenGL],
 		[], [with_opengl=yes])
 
-AS_IF([test "x$with_opengl" != xno],
-	[AC_MSG_NOTICE([with OpenGL])
-	AC_CHECK_LIB(GL, glBegin, [GL_LIBS=-lGL], AC_MSG_ERROR([GL required]))
-	AC_CHECK_LIB(GLU, gluBeginCurve, [GLU_LIBS=-lGLU], AC_MSG_ERROR([GLU required]))
-	AC_CHECK_LIB(GLEW, glewInit, [GLEW_LIBS=-lGLEW], AC_MSG_ERROR([GLEW required]))
-	AC_CHECK_LIB(glut, glutInit, [GLUT_LIBS=-lglut], AC_MSG_ERROR([glut required]))
+AS_IF([test "x$with_opengl" != xno], [
+	AC_MSG_NOTICE([with OpenGL])
+	PKG_CHECK_MODULES([OPENGL], [gl glu glew freeglut])
 	AC_DEFINE([HAVE_OPENGL], [1], [Define if you have OpenGL libs])
-
-	# Set LD_FLAGS for OpenGL linking
-	AC_SUBST(OPENGL_LD_FLAGS, "$GL_LIBS $GLU_LIBS $GLEW_LIBS $GLUT_LIBS")
-	AC_SUBST(OPENGL_FLAGS, "$GLEW_CFLAGS $GL_CFLAGS")], []
-)
+])
 
 AS_IF([test "x$enable_debug" = "xyes"], [
 	AC_DEFINE([ENABLE_DEBUG], [1], [whether debugging is enabled])
@@ -79,14 +66,12 @@ AC_SUBST(GENCODE_FLAGS)
 # Set CXX compiler to nvcc for linking with CUDA object file
 AC_PROG_CXX([nvcc])
 
-PKG_PROG_PKG_CONFIG()
-
 # Unit tests wich check
-PKG_CHECK_MODULES([CHECK], [check >= 0.9.4], [have_check=yes], [have_check=no])
-AS_IF([test "x$have_check" != xno],
-	AC_SUBST(CHECK_LIBS, "-lcheck_pic -lrt -lm")
-)
-
+AS_IF([test "x$cross_compiling" != xyes], [
+	PKG_CHECK_MODULES([CHECK], [check >= 0.9.4],
+		[have_check=yes], [have_check=no])
+])
+AM_CONDITIONAL([BUILD_TEST], [test "x$have_check" = xyes])
 
 AS_IF([test "x$USE_NLS" = "xyes"], [
 	AC_DEFINE([USE_NLS], [1], [Define to 1 if NLS support is enabled])
