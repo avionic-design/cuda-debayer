@@ -42,7 +42,7 @@ AS_IF([test "x$with_opengl" != xno], [
 
 AS_IF([test "x$enable_debug" = "xyes"], [
 	AC_DEFINE([ENABLE_DEBUG], [1], [whether debugging is enabled])
-	CFLAGS="$CFLAGS -O0 -g3"
+	CXXFLAGS="$CXXFLAGS -O0 -g3"
 ])
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])

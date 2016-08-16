@@ -8,7 +8,7 @@ lib_camera_device_cuda_a_SOURCES = \
 	bayer2rgb.cu \
 	gl_display.cpp
 
-gl_display_CFLAGS = \
+lib_camera_device_cuda_a_CXXFLAGS = \
 	$(OPENGL_CFLAGS)
 
 NVCC_CPPFLAGS = $(CUDA_CFLAGS) \
