@@ -1,6 +1,6 @@
 TESTS = check_cuda_kernel
 
-noinst_PROGRAMS = check_cuda_kernel
+check_PROGRAMS = check_cuda_kernel
 
 check_cuda_kernel_SOURCES = \
 	check_cuda_kernel.cu
