@@ -83,11 +83,11 @@ int main(int argc, char **argv)
 	struct camera_vars *cam_vars = NULL;
 	cudaError_t ret_cuda = cudaSuccess;
 	struct cuda_vars *gpu_vars = NULL;
+	cudaStream_t stream = NULL;
 	uint8_t displayed = NOT;
 	struct timespec start;
 	struct timespec stop;
 	int exposure = 30000;
-	cudaStream_t stream;
 	float scale = 1.0f;
 	int ret_val = 0;
 	uint8_t *output;
