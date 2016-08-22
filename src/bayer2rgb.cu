@@ -182,14 +182,15 @@ cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 					cudaGetErrorString(ret_val));
 			return ret_val;
 		}
+		ret_val = cudaStreamSynchronize(
+				gpu_vars->streams[gpu_vars->cnt % 2]);
+		if (ret_val != cudaSuccess) {
+			fprintf(stderr, "device synchronize\n");
+			return ret_val;
+		}
 	}
 
-	ret_val = cudaStreamSynchronize(gpu_vars->streams[
-			gpu_vars->cnt % 2]);
-	if (ret_val != cudaSuccess) {
-		fprintf(stderr, "device synchronize\n");
-		return ret_val;
-	}
+	*stream = gpu_vars->streams[(gpu_vars->cnt % 2)];
 
 	gpu_vars->cnt = (gpu_vars->cnt + 1) % 2;
 
