@@ -51,12 +51,15 @@ AX_PROG_NVCC
 PKG_CHECK_MODULES([CUDA], [cudart-6.5])
 
 # Set gencode flags for compilation and linking.
-# Gencode flags allow compilation and linking for other compute capabilities
-# than the highest compute capabilty of the used GPU.
-# The compute capability features are discribed in
+# Gencode flags allow compilation and linking for GPU compute
+# capabilities independent of the GPU on the build host.
+# The compute capability features are described in
 # http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
-# The compute capability of the used GPU can be read with the NVIDIA application
+# The compute capability of the GPU can be read with the NVIDIA application
 # deviceQuery, which can be found in the SDK.
+# cuda-debayer requires minimum compute capability 3.0. Since the
+# package has been developed for the target platform TK1, which has
+# gpu compute capability 3.2, generate code for that by default.
 AS_IF([test "x${NVCC_CXXFLAGS+set}" != xset], [
        NVCC_CXXFLAGS="-gencode arch=compute_32,code=sm_32 -rdc=true -O2 -g -G"
 ])
