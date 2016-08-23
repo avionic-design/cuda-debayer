@@ -10,13 +10,22 @@ check_cuda_kernel_CPPFLAGS = \
 	$(CUDA_CFLAGS) \
 	$(GENCODE_FLAGS)
 
-check_cuda_kernel_LDADD = \
+check_cuda_kernel_LDADD_orig = \
 	$(top_build_prefix)src/lib_camera_device_cuda.a \
 	$(CHECK_LIBS) \
 	$(CUDA_LDFLAGS) \
 	$(GENCODE_FLAGS)
 
 check_cuda_kernel_LINK = $(NVCC) -o $@
+
+# nvcc chokes on -pthread
+NVCC_STRIP_OPTS = -pthread
+check_cuda_kernel_LDADD = \
+	$(filter-out $(NVCC_STRIP_OPTS),$(check_cuda_kernel_LDADD_orig))
+
+# When automake computes _DEPENDENCIES, it can't handle the dynamic
+# check_cuda_kernel_LDADD, therefore specify _DEPENDENCIES explicitly.
+check_cuda_kernel_DEPENDENCIES =
 
 NVCC_CPPFLAGS = $(CUDA_CFLAGS) \
 	-I$(top_srcdir)/src
