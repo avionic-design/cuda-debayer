@@ -1,7 +1,7 @@
 cuda_debayer_LDADD = \
 	$(top_build_prefix)/src/lib_camera_device_cuda.a \
 	$(OPENCV_LIBS) \
-	$(CUDA_LDFLAGS) \
+	$(CUDA_LIBS) \
 	$(GENCODE_FLAGS) \
 	$(OPENGL_LIBS)
 
@@ -19,3 +19,5 @@ cuda_debayer_CXXFLAGS = \
 
 cuda_debayer_SOURCES = \
 	cuda_debayer.cpp
+
+cuda_debayer_LINK = $(NVCC) -o $@

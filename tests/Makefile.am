@@ -15,7 +15,7 @@ check_cuda_kernel_CXXFLAGS = \
 check_cuda_kernel_LDADD_orig = \
 	$(top_build_prefix)src/lib_camera_device_cuda.a \
 	$(CHECK_LIBS) \
-	$(CUDA_LDFLAGS) \
+	$(CUDA_LIBS) \
 	$(GENCODE_FLAGS)
 
 check_cuda_kernel_LINK = $(NVCC) -o $@

@@ -47,11 +47,8 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
 
-# the ax_check_cuda macro only fails the configure step if enable_cuda is
-# explicitly set to yes. Since we require CUDA at all times, just set it
-# here instead of letting the user choose, for now.
-enable_cuda=yes
-AX_CHECK_CUDA
+AX_PROG_NVCC
+PKG_CHECK_MODULES([CUDA], [cudart-6.5])
 
 # Set gencode flags for compilation and linking.
 # Gencode flags allow compilation and linking for other compute capabilities
@@ -62,9 +59,6 @@ AX_CHECK_CUDA
 # deviceQuery, which can be found in the SDK.
 GENCODE_FLAGS="-gencode arch=compute_32,code=sm_32"
 AC_SUBST(GENCODE_FLAGS)
-
-# Set CXX compiler to nvcc for linking with CUDA object file
-AC_PROG_CXX([nvcc])
 
 # Unit tests wich check
 AS_IF([test "x$cross_compiling" != xyes], [
