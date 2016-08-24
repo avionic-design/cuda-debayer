@@ -15,10 +15,11 @@ check_cuda_kernel_CXXFLAGS = \
 check_cuda_kernel_LDADD_orig = \
 	$(top_build_prefix)src/lib_camera_device_cuda.a \
 	$(CHECK_LIBS) \
-	$(CUDA_LIBS) \
-	$(GENCODE_FLAGS)
+	$(CUDA_LIBS)
 
-check_cuda_kernel_LINK = $(NVCC) -o $@
+check_cuda_kernel_LINK = $(NVCC) \
+	$(AM_NVCC_CXXFLAGS) $(NVCC_CXXFLAGS) \
+	-o $@
 
 # nvcc chokes on -pthread
 NVCC_STRIP_OPTS = -pthread
@@ -30,9 +31,7 @@ check_cuda_kernel_LDADD = \
 check_cuda_kernel_DEPENDENCIES =
 
 AM_NVCC_CXXFLAGS = \
-	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS)) \
-	$(GENCODE_FLAGS) \
-	-O2 -g -G -dc
+	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS))
 
 .cu.o : ; $(NVCC) \
 	$(check_cuda_kernel_CPPFLAGS) $(CPPFLAGS) \

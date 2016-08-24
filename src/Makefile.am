@@ -13,8 +13,7 @@ lib_camera_device_cuda_a_CXXFLAGS = \
 	$(CUDA_CFLAGS)
 
 AM_NVCC_CXXFLAGS = \
-	$(CUDA_CFLAGS) $(GENCODE_FLAGS) \
-	-O2 -g -G -dc
+	$(CUDA_CFLAGS)
 
 .cu.o : ; $(NVCC) \
 	$(lib_camera_device_cuda_a_CPPFLAGS) $(CPPFLAGS) \

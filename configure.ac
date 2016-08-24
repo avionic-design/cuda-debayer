@@ -57,8 +57,9 @@ PKG_CHECK_MODULES([CUDA], [cudart-6.5])
 # http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
 # The compute capability of the used GPU can be read with the NVIDIA application
 # deviceQuery, which can be found in the SDK.
-GENCODE_FLAGS="-gencode arch=compute_32,code=sm_32"
-AC_SUBST(GENCODE_FLAGS)
+AS_IF([test "x${NVCC_CXXFLAGS+set}" != xset], [
+       NVCC_CXXFLAGS="-gencode arch=compute_32,code=sm_32 -rdc=true -O2 -g -G"
+])
 
 # Unit tests wich check
 AS_IF([test "x$cross_compiling" != xyes], [
