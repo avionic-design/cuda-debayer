@@ -6,10 +6,11 @@ check_cuda_kernel_SOURCES = \
 	check_cuda_kernel.cu
 
 check_cuda_kernel_CPPFLAGS = \
-	-I$(top_srcdir)/src \
+	-I$(top_srcdir)/src
+
+check_cuda_kernel_CXXFLAGS = \
 	$(CHECK_CFLAGS) \
-	$(CUDA_CFLAGS) \
-	$(GENCODE_FLAGS)
+	$(CUDA_CFLAGS)
 
 check_cuda_kernel_LDADD_orig = \
 	$(top_build_prefix)src/lib_camera_device_cuda.a \
@@ -28,10 +29,11 @@ check_cuda_kernel_LDADD = \
 # check_cuda_kernel_LDADD, therefore specify _DEPENDENCIES explicitly.
 check_cuda_kernel_DEPENDENCIES =
 
-NVCC_CPPFLAGS = $(CUDA_CFLAGS) \
-	-I$(top_srcdir)/src
+AM_NVCC_CXXFLAGS = \
+	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS)) \
+	$(GENCODE_FLAGS) \
+	-O2 -g -G -dc
 
-NVCC_CXXFLAGS = -O2 -g -G -dc \
-	$(GENCODE_FLAGS)
-
-.cu.o : ; $(NVCC) $(NVCC_CPPFLAGS) $(NVCC_CXXFLAGS) -c -o $@ $<
+.cu.o : ; $(NVCC) \
+	$(check_cuda_kernel_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_NVCC_CXXFLAGS) $(NVCC_CXXFLAGS) -c -o $@ $<
