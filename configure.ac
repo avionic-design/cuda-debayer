@@ -75,8 +75,7 @@ AS_IF([test "x$USE_NLS" = "xyes"], [
 	AC_DEFINE([USE_NLS], [1], [Define to 1 if NLS support is enabled])
 ])
 
-# enable all warnings
-CFLAGS="$CFLAGS -Wall"
+AC_SUBST([WARNCFLAGS], [-Wall])
 
 AC_ARG_ENABLE([werror],
 	[AS_HELP_STRING([--disable-werror],
@@ -84,7 +83,7 @@ AC_ARG_ENABLE([werror],
 		[enable_werror="$enableval"],
 		[enable_werror=yes])
 if test "x$enable_werror" = "xyes"; then
-	CFLAGS="$CFLAGS -Werror"
+	WARNCFLAGS="$WARNCFLAGS -Werror"
 fi
 
 # Loose the directory print messages in silent mode

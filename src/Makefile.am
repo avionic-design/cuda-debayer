@@ -10,10 +10,12 @@ lib_camera_device_cuda_a_SOURCES = \
 
 lib_camera_device_cuda_a_CXXFLAGS = \
 	$(OPENGL_CFLAGS) \
-	$(CUDA_CFLAGS)
+	$(CUDA_CFLAGS) \
+	$(WARNCFLAGS)
 
 AM_NVCC_CXXFLAGS = \
-	$(CUDA_CFLAGS)
+	$(CUDA_CFLAGS) \
+	$(addprefix -Xcompiler ,$(WARNCFLAGS))
 
 .cu.o : ; $(NVCC) \
 	$(lib_camera_device_cuda_a_CPPFLAGS) $(CPPFLAGS) \

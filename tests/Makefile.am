@@ -10,7 +10,8 @@ check_cuda_kernel_CPPFLAGS = \
 
 check_cuda_kernel_CXXFLAGS = \
 	$(CHECK_CFLAGS) \
-	$(CUDA_CFLAGS)
+	$(CUDA_CFLAGS) \
+	$(WARNCFLAGS)
 
 check_cuda_kernel_LDADD_orig = \
 	$(top_build_prefix)src/lib_camera_device_cuda.a \
@@ -31,7 +32,8 @@ check_cuda_kernel_LDADD = \
 check_cuda_kernel_DEPENDENCIES =
 
 AM_NVCC_CXXFLAGS = \
-	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS))
+	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS)) \
+	$(addprefix -Xcompiler ,$(WARNCFLAGS))
 
 .cu.o : ; $(NVCC) \
 	$(check_cuda_kernel_CPPFLAGS) $(CPPFLAGS) \
