@@ -38,7 +38,7 @@ START_TEST(test_kernel)
 	uint8_t *data;
 	uint32_t height = 16;
 	uint32_t width = 16;
-	int i, j;
+	unsigned int i, j;
 
 	gpu_output = (uint8_t *) malloc(width * height * sizeof(uint8_t) * bpp);
 
