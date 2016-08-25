@@ -15,14 +15,16 @@ cuda_debayer_CXXFLAGS = \
 	$(OPENCV_CFLAGS) \
 	$(OPENGL_CFLAGS) \
 	$(CUDA_CFLAGS) \
-	$(WARNCFLAGS)
+	$(WARNCFLAGS) \
+	$(DEBUGCFLAGS)
 
 cuda_debayer_SOURCES = \
 	cuda_debayer.cpp
 
 AM_NVCC_CXXFLAGS = \
 	$(CUDA_CFLAGS) \
-	$(addprefix -Xcompiler ,$(WARNCFLAGS))
+	$(addprefix -Xcompiler ,$(WARNCFLAGS) $(DEBUGCFLAGS)) \
+	$(DEBUGNVCCFLAGS)
 
 cuda_debayer_LINK = $(NVCC) \
 	$(AM_NVCC_CXXFLAGS) $(NVCC_CXXFLAGS) \

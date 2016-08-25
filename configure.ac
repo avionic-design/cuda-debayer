@@ -42,8 +42,11 @@ AS_IF([test "x$with_opengl" != xno], [
 
 AS_IF([test "x$enable_debug" = "xyes"], [
 	AC_DEFINE([ENABLE_DEBUG], [1], [whether debugging is enabled])
-	CXXFLAGS="$CXXFLAGS -O0 -g3"
+	DEBUGCFLAGS="-O0 -g3"
+	DEBUGNVCCFLAGS="-G"
 ])
+AC_SUBST([DEBUGCFLAGS])
+AC_SUBST([DEBUGNVCCFLAGS])
 
 AC_CHECK_HEADERS([linux/videodev2.h], [], [AC_MSG_ERROR([v4l2 not found])])
 
@@ -61,7 +64,7 @@ PKG_CHECK_MODULES([CUDA], [cudart-6.5])
 # package has been developed for the target platform TK1, which has
 # gpu compute capability 3.2, generate code for that by default.
 AS_IF([test "x${NVCC_CXXFLAGS+set}" != xset], [
-       NVCC_CXXFLAGS="-gencode arch=compute_32,code=sm_32 -rdc=true -O2 -g -G"
+       NVCC_CXXFLAGS="-gencode arch=compute_32,code=sm_32 -rdc=true"
 ])
 
 # Unit tests wich check
