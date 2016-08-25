@@ -276,7 +276,7 @@ static int init_mmap(struct camera_vars *cam_vars)
 {
 	struct v4l2_requestbuffers req_buf;
 	struct v4l2_buffer buf;
-	int i;
+	unsigned int i;
 
 	if (cam_vars == NULL)
 		return -EINVAL;

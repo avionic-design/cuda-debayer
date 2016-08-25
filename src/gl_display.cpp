@@ -260,7 +260,8 @@ int gl_display_init(gl_display_vars **gl_vars_p, uint32_t width,
 
 	cudaGLSetGLDevice(0);
 
-	if (createTextureDst(gl_vars) != 0) {
+	ret_val = createTextureDst(gl_vars);
+	if (ret_val != 0) {
 		printf("failed to create GL texture");
 		goto cleanup;
 	}
