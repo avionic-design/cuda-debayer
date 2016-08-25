@@ -22,7 +22,9 @@ AC_ARG_ENABLE([debug],
 	[], [enable_debug=no])
 AC_MSG_RESULT([$enable_debug])
 
-AC_ARG_WITH([opencv], [  --without-opencv        Compile without OpenCV],
+AC_ARG_WITH([opencv],
+		[AS_HELP_STRING([--without-opencv],
+				[Compile without OpenCV])],
 		[], [with_opencv=yes])
 
 AS_IF([test "x$with_opencv" != xno],
@@ -31,7 +33,9 @@ AS_IF([test "x$with_opencv" != xno],
 		AC_DEFINE([HAVE_OPENCV], [1], [Define if you have OpenCV libs]))]
 )
 
-AC_ARG_WITH([opengl], [  --without-opengl        Compile without OpenGL],
+AC_ARG_WITH([opengl],
+		[AS_HELP_STRING([--without-opengl],
+				[Compile without OpenGL])],
 		[], [with_opengl=yes])
 
 AS_IF([test "x$with_opengl" != xno], [
