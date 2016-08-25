@@ -72,12 +72,6 @@ static void usage(FILE *fp, const char *argv)
 
 int main(int argc, char **argv)
 {
-#ifdef HAVE_OPENCV
-	cv::Mat image = cv::Mat::zeros(1, 1, CV_8UC4);
-#endif
-#ifdef HAVE_OPENGL
-	struct gl_display_vars *gl_vars = NULL;
-#endif
 	const std::string window = "Display";
 	std::string dev_name = "/dev/video0";
 	struct camera_vars *cam_vars = NULL;
@@ -85,28 +79,33 @@ int main(int argc, char **argv)
 	struct cuda_vars *gpu_vars = NULL;
 	cudaStream_t stream = NULL;
 	uint8_t displayed = NOT;
-	struct timespec start;
-	struct timespec stop;
 	int exposure = 30000;
-	float scale = 1.0f;
 	int ret_val = 0;
 	uint8_t *output;
-#ifdef HAVE_OPENCV
-	cv::Mat o_image;
-#endif
-	int nframes = 0;
 	long int l_int;
 	uint8_t *frame;
-	double elapsed;
 	int gain = -1;
-	double fps;
 
 #ifdef HAVE_OPENCV
+	cv::Mat image = cv::Mat::zeros(1, 1, CV_8UC4);
+	cv::Mat o_image;
+
 	displayed = OPENCV;
 #endif
 
 #ifdef HAVE_OPENGL
+	struct gl_display_vars *gl_vars = NULL;
+	struct timespec start;
+	struct timespec stop;
+	int nframes = 0;
+	double elapsed;
+	double fps;
+
 	displayed = OPENGL;
+#endif
+
+#if defined(HAVE_OPENCV) || defined(HAVE_OPENGL)
+	float scale = 1.0f;
 #endif
 
 	for (;;) {
@@ -185,7 +184,12 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 
+#if defined(HAVE_OPENCV) || defined(HAVE_OPENGL)
 			scale = 1.0f / l_int;
+#else
+			printf("scaling without displaying is not supported\n");
+			return EXIT_FAILURE;
+#endif
 			break;
 
 		default:
