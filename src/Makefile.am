@@ -17,7 +17,8 @@ lib_camera_device_cuda_a_CXXFLAGS = \
 AM_NVCC_CXXFLAGS = \
 	$(CUDA_CFLAGS) \
 	$(addprefix -Xcompiler ,$(WARNCFLAGS) $(DEBUGCFLAGS)) \
-	$(DEBUGNVCCFLAGS)
+	$(DEBUGNVCCFLAGS) \
+	$(NVCC_CROSSFLAGS)
 
 .cu.o : ; $(NVCC) \
 	$(lib_camera_device_cuda_a_CPPFLAGS) $(CPPFLAGS) \

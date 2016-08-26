@@ -24,7 +24,8 @@ cuda_debayer_SOURCES = \
 AM_NVCC_CXXFLAGS = \
 	$(CUDA_CFLAGS) \
 	$(addprefix -Xcompiler ,$(WARNCFLAGS) $(DEBUGCFLAGS)) \
-	$(DEBUGNVCCFLAGS)
+	$(DEBUGNVCCFLAGS) \
+	$(NVCC_CROSSFLAGS)
 
 cuda_debayer_LINK = $(NVCC) \
 	$(AM_NVCC_CXXFLAGS) $(NVCC_CXXFLAGS) \

@@ -35,7 +35,8 @@ check_cuda_kernel_DEPENDENCIES =
 AM_NVCC_CXXFLAGS = \
 	$(filter-out $(NVCC_STRIP_OPTS),$(CUDA_CFLAGS) $(CHECK_CFLAGS)) \
 	$(addprefix -Xcompiler ,$(WARNCFLAGS) $(DEBUGCFLAGS)) \
-	$(DEBUGNVCCFLAGS)
+	$(DEBUGNVCCFLAGS) \
+	$(NVCC_CROSSFLAGS)
 
 .cu.o : ; $(NVCC) \
 	$(check_cuda_kernel_CPPFLAGS) $(CPPFLAGS) \
