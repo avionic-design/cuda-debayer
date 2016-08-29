@@ -1,5 +1,10 @@
-Release x.y.z (YYYY-MM-DD)
+Release 0.2.2 (2016-08-29)
 ==========================
+- fixes in configure routine for cross-compiling
+- fixes in build routine
+- fix crash caused by uninitialised CUDA-stream pointer
+- minor fixes in code to guarantee successful compilation even in rare
+  configurations
 
 Release 0.2.0 (2016-08-11)
 ==========================
