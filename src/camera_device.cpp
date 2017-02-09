@@ -36,6 +36,7 @@ struct buffer {
 };
 
 struct camera_vars {
+	enum v4l2_memory memory;
 	unsigned int n_buffers;
 	struct buffer *buffers;
 
@@ -111,7 +112,7 @@ static int read_frame(struct camera_vars *cam_vars, uchar **frame)
 
 	CLEAR(buf);
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	buf.memory = V4L2_MEMORY_MMAP;
+	buf.memory = cam_vars->memory;
 
 	if (xioctl(cam_vars->fd, VIDIOC_DQBUF, &buf) == -1) {
 		perror("VIDIOC_DQBUF");
@@ -229,8 +230,13 @@ static int start_capturing(struct camera_vars *cam_vars)
 	for (i = 0; i < cam_vars->n_buffers; ++i) {
 		CLEAR(buf);
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		buf.memory = V4L2_MEMORY_MMAP;
+		buf.memory = cam_vars->memory;
 		buf.index = i;
+		if (cam_vars->memory == V4L2_MEMORY_USERPTR) {
+			buf.m.userptr =
+				(unsigned long)cam_vars->buffers[i].start;
+			buf.length = cam_vars->buffers[i].length;
+		}
 
 		if (xioctl(cam_vars->fd, VIDIOC_QBUF, &buf) == -1) {
 			perror("VIDIOC_QBUF");
@@ -257,8 +263,11 @@ static int deinit_device(struct camera_vars *cam_vars)
 		return -EINVAL;
 
 	for (i = 0; i < (cam_vars->n_buffers); ++i) {
-		ret_val = munmap(cam_vars->buffers[i].start,
-				cam_vars->buffers[i].length);
+		if (cam_vars->memory == V4L2_MEMORY_USERPTR)
+			free(cam_vars->buffers[i].start);
+		else
+			ret_val = munmap(cam_vars->buffers[i].start,
+					cam_vars->buffers[i].length);
 		if (ret_val == -1) {
 			fprintf(stderr, "munmap error %d, %s\n", errno,
 					strerror(errno));
@@ -272,25 +281,31 @@ static int deinit_device(struct camera_vars *cam_vars)
 	return ret_val;
 }
 
-static int init_mmap(struct camera_vars *cam_vars)
+static int init_buffers(struct camera_vars *cam_vars, size_t size)
 {
 	struct v4l2_requestbuffers req_buf;
 	struct v4l2_buffer buf;
 	unsigned int i;
 	int err;
 
-	if (cam_vars == NULL)
+	if (cam_vars == NULL || size == 0)
 		return -EINVAL;
 
 	CLEAR(req_buf);
 	req_buf.count = 4;
 	req_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	req_buf.memory = V4L2_MEMORY_MMAP;
+	req_buf.memory = V4L2_MEMORY_USERPTR;
 
-	if (xioctl(cam_vars->fd, VIDIOC_REQBUFS, &req_buf) == -1) {
+	/* First try with user pointer, if that fails fallback on mmap */
+	err = xioctl(cam_vars->fd, VIDIOC_REQBUFS, &req_buf);
+	if (err < 0 && errno == EINVAL) {
+		req_buf.memory = V4L2_MEMORY_MMAP;
+		err = xioctl(cam_vars->fd, VIDIOC_REQBUFS, &req_buf);
+	}
+	if (err < 0) {
 		if (errno == EINVAL)
 			fprintf(stderr, "device does not support"
-				" memory mapping\n");
+				" user pointers or memory mapping\n");
 		else
 			perror("VIDIOC_REQBUFS");
 		return -errno;
@@ -301,6 +316,7 @@ static int init_mmap(struct camera_vars *cam_vars)
 		return -errno;
 	}
 
+	cam_vars->memory = (enum v4l2_memory)req_buf.memory;
 	cam_vars->buffers = (buffer *)calloc(req_buf.count,
 			sizeof((cam_vars->buffers)[0]));
 
@@ -310,6 +326,21 @@ static int init_mmap(struct camera_vars *cam_vars)
 	}
 
 	for (i = 0; i < req_buf.count; i++) {
+
+		if (cam_vars->memory == V4L2_MEMORY_USERPTR) {
+			err = posix_memalign(&cam_vars->buffers[i].start,
+					sysconf(_SC_PAGESIZE), size);
+			if (err) {
+				err = -errno;
+				fprintf(stderr, "memalig error %d, %s\n",
+					errno, strerror(errno));
+				goto cleanup;
+			}
+			cam_vars->buffers[i].length = size;
+			cam_vars->n_buffers = i + 1;
+			continue;
+		}
+
 		CLEAR(buf);
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
@@ -340,8 +371,11 @@ static int init_mmap(struct camera_vars *cam_vars)
 	return 0;
 cleanup:
 	for (i = 0; i < cam_vars->n_buffers; i++) {
-		munmap(cam_vars->buffers[i].start,
-			cam_vars->buffers[i].length);
+		if (cam_vars->memory == V4L2_MEMORY_USERPTR)
+			free(cam_vars->buffers[i].start);
+		else
+			munmap(cam_vars->buffers[i].start,
+				cam_vars->buffers[i].length);
 	}
 	free(cam_vars->buffers);
 
@@ -422,7 +456,7 @@ static int init_device(struct camera_vars *cam_vars,
 	if (format.fmt.pix.sizeimage < size)
 		format.fmt.pix.sizeimage = size;
 
-	if (init_mmap(cam_vars) != 0)
+	if (init_buffers(cam_vars, size) != 0)
 		return -errno;
 
 	cam_vars->format = format;
