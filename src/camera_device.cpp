@@ -354,7 +354,7 @@ static int init_buffers(struct camera_vars *cam_vars, size_t size)
 
 		cam_vars->buffers[i].length = buf.length;
 		cam_vars->buffers[i].start =
-				mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+				mmap(NULL, buf.length, PROT_READ,
 					MAP_SHARED, cam_vars->fd,
 					buf.m.offset);
 
