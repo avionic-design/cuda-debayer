@@ -353,6 +353,7 @@ static int init_device(struct camera_vars *cam_vars,
 {
 	struct v4l2_capability cap;
 	struct v4l2_format format;
+	const char *fmt_name;
 	unsigned int size;
 	unsigned int min;
 
@@ -389,26 +390,27 @@ static int init_device(struct camera_vars *cam_vars,
 		return -errno;
 	}
 
-	printf("Format h = %i\t w = %i\t stride = %i\n", format.fmt.pix.height,
-			format.fmt.pix.width, format.fmt.pix.bytesperline);
-
 	switch (format.fmt.pix.pixelformat) {
 	case V4L2_PIX_FMT_SBGGR8:
-		printf("BGGR\n");
+		fmt_name = "BGGR";
 		break;
 	case V4L2_PIX_FMT_SGBRG8:
-		printf("GBRG\n");
+		fmt_name = "GBRG";
 		break;
 	case V4L2_PIX_FMT_SGRBG8:
-		printf("GRBG\n");
+		fmt_name = "GRBG";
 		break;
 	case V4L2_PIX_FMT_SRGGB8:
-		printf("RGGB\n");
+		fmt_name = "RGGB";
 		break;
 	default:
-		printf("unrecognized format, %X\n", format.fmt.pix.pixelformat);
+		fmt_name = "unknown";
 		break;
 	}
+
+	printf("Format %s %ix%i (stride = %i bytes)\n", fmt_name,
+		format.fmt.pix.width, format.fmt.pix.height,
+		format.fmt.pix.bytesperline);
 
 	min = format.fmt.pix.width * 2;
 
