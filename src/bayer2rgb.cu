@@ -151,46 +151,46 @@ cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 	if (gpu_vars == NULL)
 		return cudaErrorInitializationError;
 
-	ret_val = cudaMemcpyAsync(gpu_vars->d_input[(gpu_vars->cnt % 2)],
+	ret_val = cudaMemcpyAsync(gpu_vars->d_input[gpu_vars->cnt],
 			p, gpu_vars->width * gpu_vars->height *
 			sizeof(uint8_t), cudaMemcpyHostToDevice,
-			gpu_vars->streams[gpu_vars->cnt % 2]);
+			gpu_vars->streams[gpu_vars->cnt]);
 	if (ret_val != cudaSuccess) {
-		fprintf(stderr, "Host to Device %d, %s\n", gpu_vars->cnt % 2,
+		fprintf(stderr, "Host to Device %d, %s\n", gpu_vars->cnt,
 				cudaGetErrorString(ret_val));
 		return ret_val;
 	}
 
 	bayer_to_rgb<<<gpu_vars->blocks_p_grid,
 			gpu_vars->threads_p_block, 0,
-			gpu_vars->streams[(gpu_vars->cnt % 2)]
-		>>>(gpu_vars->d_input[(gpu_vars->cnt % 2)],
-			gpu_vars->d_bilinear[(gpu_vars->cnt % 2)],
+			gpu_vars->streams[gpu_vars->cnt]
+		>>>(gpu_vars->d_input[gpu_vars->cnt],
+			gpu_vars->d_bilinear[gpu_vars->cnt],
 			gpu_vars->width, gpu_vars->height, gpu_vars->bpp);
 
 	if (get_dev_ptr) {
-		*output = (uint8_t *)gpu_vars->d_bilinear[(gpu_vars->cnt % 2)];
+		*output = (uint8_t *)gpu_vars->d_bilinear[gpu_vars->cnt];
 	} else {
 		ret_val = cudaMemcpyAsync(*output,
-			gpu_vars->d_bilinear[gpu_vars->cnt % 2],
+			gpu_vars->d_bilinear[gpu_vars->cnt],
 			gpu_vars->width * gpu_vars->height * sizeof(uint8_t) *
 			gpu_vars->bpp, cudaMemcpyDeviceToHost,
-			gpu_vars->streams[gpu_vars->cnt % 2]);
+			gpu_vars->streams[gpu_vars->cnt]);
 		if (ret_val != cudaSuccess) {
 			fprintf(stderr, "Device to Host %d, %s\n",
-					gpu_vars->cnt % 2,
+					gpu_vars->cnt,
 					cudaGetErrorString(ret_val));
 			return ret_val;
 		}
 		ret_val = cudaStreamSynchronize(
-				gpu_vars->streams[gpu_vars->cnt % 2]);
+				gpu_vars->streams[gpu_vars->cnt]);
 		if (ret_val != cudaSuccess) {
 			fprintf(stderr, "device synchronize\n");
 			return ret_val;
 		}
 	}
 
-	*stream = gpu_vars->streams[(gpu_vars->cnt % 2)];
+	*stream = gpu_vars->streams[gpu_vars->cnt];
 
 	gpu_vars->cnt = (gpu_vars->cnt + 1) % 2;
 
