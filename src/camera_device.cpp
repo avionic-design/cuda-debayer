@@ -277,6 +277,7 @@ static int init_mmap(struct camera_vars *cam_vars)
 	struct v4l2_requestbuffers req_buf;
 	struct v4l2_buffer buf;
 	unsigned int i;
+	int err;
 
 	if (cam_vars == NULL)
 		return -EINVAL;
@@ -309,14 +310,13 @@ static int init_mmap(struct camera_vars *cam_vars)
 	}
 
 	for (i = 0; i < req_buf.count; i++) {
-		cam_vars->n_buffers = i;
-
 		CLEAR(buf);
 		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		buf.memory = V4L2_MEMORY_MMAP;
 		buf.index = i;
 
 		if (xioctl(cam_vars->fd, VIDIOC_QUERYBUF, &buf) == -1) {
+			err = -errno;
 			perror("VIDIOC_QUERYBUF");
 			goto cleanup;
 		}
@@ -328,17 +328,24 @@ static int init_mmap(struct camera_vars *cam_vars)
 					buf.m.offset);
 
 		if (cam_vars->buffers[i].start == MAP_FAILED) {
+			err = -errno;
 			fprintf(stderr, "mmap error %d, %s\n", errno,
 					strerror(errno));
 			goto cleanup;
 		}
+
+		cam_vars->n_buffers = i + 1;
 	}
 
 	return 0;
 cleanup:
+	for (i = 0; i < cam_vars->n_buffers; i++) {
+		munmap(cam_vars->buffers[i].start,
+			cam_vars->buffers[i].length);
+	}
 	free(cam_vars->buffers);
 
-	return -errno;
+	return err;
 }
 
 static int init_device(struct camera_vars *cam_vars,
