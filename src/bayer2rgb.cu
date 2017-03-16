@@ -16,7 +16,6 @@
 #include "bayer2rgb.h"
 #include "bayer2rgb_kernel.h"
 
-#define PIX(x, y, imgw)		((x) + (y) * (imgw))
 #define LEFT(x, y, imgw)	((x) - 1 + (y) * (imgw))
 #define RIGHT(x, y, imgw)	((x) + 1 + (y) * (imgw))
 #define TOP(x, y, imgw)		((x) + ((y) - 1) * (imgw))
@@ -25,6 +24,23 @@
 #define BL(x, y, imgw)		((x) - 1 + ((y) + 1) * (imgw))
 #define TR(x, y, imgw)		((x) + 1 + ((y) - 1) * (imgw))
 #define BR(x, y, imgw)		((x) + 1 + ((y) + 1) * (imgw))
+
+#define PIX(in, x, y, imgw) \
+	in[((x) + (y) * (imgw))]
+
+#define INTERPOLATE_H(in, x, y, w) \
+	(((uint32_t)in[LEFT(x, y, w)] + in[RIGHT(x, y, w)]) / 2)
+
+#define INTERPOLATE_V(in, x, y, w) \
+	(((uint32_t)in[TOP(x, y, w)] + in[BOT(x, y, w)]) / 2)
+
+#define INTERPOLATE_HV(in, x, y, w) \
+	(((uint32_t)in[LEFT(x, y, w)] + in[RIGHT(x, y, w)] + \
+		in[TOP(x, y, w)] + in[BOT(x, y, w)]) / 4)
+
+#define INTERPOLATE_X(in, x, y, w) \
+	(((uint32_t)in[TL(x, y, w)] + in[BL(x, y, w)] + \
+		in[TR(x, y, w)] + in[BR(x, y, w)]) / 4)
 
 #define RED 0
 #define GREEN 1
@@ -80,59 +96,43 @@ __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 	if ((x + 2) < imgw && (x - 1) >= 0 && (y + 2) < imgh && (y - 1) >= 0) {
 		/* red at red */
 		out[(y + 1) * elemCols + (x + 1) * bpp + RED] =
-				in[PIX(x + 1, y + 1, imgw)];
+				PIX(in, x + 1, y + 1, imgw);
 		/* green at red */
 		out[(y + 1) * elemCols + (x + 1) * bpp + GREEN] =
-				((uint32_t)in[TOP(x + 1, y + 1, imgw)] +
-				in[BOT(x + 1, y + 1, imgw)] +
-				in[LEFT(x + 1, y + 1, imgw)] +
-				in[RIGHT(x + 1, y + 1, imgw)]) / 4;
+				INTERPOLATE_HV(in, x + 1, y + 1, imgw);
 		/* blue at red */
 		out[(y + 1) * elemCols + (x + 1) * bpp + BLUE] =
-				((uint32_t)in[TL(x + 1, y + 1, imgw)] +
-				in[TR(x + 1, y + 1, imgw)] +
-				in[BL(x + 1, y + 1, imgw)] +
-				in[BR(x + 1, y + 1, imgw)]) / 4;
+				INTERPOLATE_X(in, x + 1, y + 1, imgw);
 
 		/* red at lower left green */
 		out[(y + 1) * elemCols + x * bpp + RED] =
-				((uint32_t)in[LEFT(x, y + 1, imgw)] +
-				in[RIGHT(x, y + 1, imgw)]) / 2;
+				INTERPOLATE_H(in, x, y + 1, imgw);
 		/* green at lower left green */
 		out[(y + 1) * elemCols + x * bpp + GREEN] =
-				in[PIX(x, y + 1, imgw)];
+				PIX(in, x, y + 1, imgw);
 		/* blue at lower left green */
 		out[(y + 1) * elemCols + x * bpp + BLUE] =
-				((uint32_t)in[TOP(x, y + 1, imgw)] +
-				in[BOT(x, y + 1, imgw)]) / 2;
+				INTERPOLATE_V(in, x, y + 1, imgw);
 
 		/* red at upper right green */
 		out[y * elemCols + (x + 1) * bpp + RED] =
-				((uint32_t)in[TOP(x + 1, y, imgw)] +
-				in[BOT(x + 1, y, imgw)]) / 2;
+				INTERPOLATE_V(in, x + 1, y, imgw);
 		/* green at upper right green */
 		out[y * elemCols + (x + 1) * bpp + GREEN] =
-				in[PIX(x + 1, y, imgw)];
+				PIX(in, x + 1, y, imgw);
 		/* blue at upper right green */
 		out[y * elemCols + (x + 1) * bpp + BLUE] =
-				((uint32_t)in[LEFT(x + 1, y, imgw)] +
-				in[RIGHT(x + 1, y, imgw)]) / 2;
+				INTERPOLATE_H(in, x + 1, y, imgw);
 
 		/* red at blue */
 		out[y * elemCols + x * bpp + RED] =
-				((uint32_t)in[TL(x, y, imgw)] +
-				in[TR(x, y, imgw)] +
-				in[BL(x, y, imgw)] +
-				in[BR(x, y, imgw)]) / 4;
+				INTERPOLATE_X(in, x, y, imgw);
 		/* green at blue */
 		out[y * elemCols + x * bpp + GREEN] =
-				((uint32_t)in[TOP(x, y, imgw)] +
-				in[BOT(x, y, imgw)] +
-				in[LEFT(x, y, imgw)] +
-				in[RIGHT(x, y, imgw)]) / 4;
+				INTERPOLATE_HV(in, x, y, imgw);
 		/* blue at blue */
 		out[y * elemCols + x * bpp + BLUE] =
-				in[PIX(x, y, imgw)];
+				PIX(in, x, y, imgw);
 
 		if (bpp == 4) {
 			out[y * elemCols + x * bpp + 3] = 255;
