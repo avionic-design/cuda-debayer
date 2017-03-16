@@ -542,17 +542,11 @@ int camera_device_init(struct camera_vars **cam_vars_p,
 	if (ret_val)
 		return ret_val;
 
-	if (exposure > 0) {
+	if (exposure > 0)
 		ret_val = set_exposure(exposure, cam_vars->fd);
-		if (ret_val != 0)
-			return -ret_val;
-	}
 
-	if (gain > 0) {
+	if (gain > 0)
 		ret_val = set_gain(gain, cam_vars->fd);
-		if (ret_val != 0)
-			return -ret_val;
-	}
 
 	ret_val = start_capturing(cam_vars);
 	if (ret_val)
