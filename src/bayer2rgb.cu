@@ -54,6 +54,11 @@ struct cuda_vars {
 	dim3 threads_p_block;
 	dim3 blocks_p_grid;
 
+	int2 pos_r;
+	int2 pos_gr;
+	int2 pos_gb;
+	int2 pos_b;
+
 	uint8_t *d_bilinear[2];
 	uint8_t *d_input[2];
 
@@ -67,7 +72,7 @@ struct cuda_vars {
 };
 
 /**
- * CUDA Kernel Device code for RGGB
+ * CUDA Kernel Device code for bayer to RGB
  *
  * Computes the Bilear Interpolation of missing coloured pixel from Bayer pattern.
  * Output is RGB.
@@ -87,54 +92,49 @@ struct cuda_vars {
  * R G
  * G B
  *
+ * To support other formats than RGGB we also pass the position of each color
+ * channel in the 2x2 block. In the above case we get B at 0,0, Gb at 1,0,
+ * Gr at 0,1 and R at 1,1.
  */
 __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
-		uint32_t imgh, uint8_t bpp)
+		uint32_t imgh, uint8_t bpp, int2 r, int2 gr, int2 gb, int2 b)
 {
 	int x = 2 * ((blockDim.x * blockIdx.x) + threadIdx.x) + 1;
 	int y = 2 * ((blockDim.y * blockIdx.y) + threadIdx.y) + 1;
 	int elemCols = imgw * bpp;
 
 	if ((x + 2) < imgw && (x - 1) >= 0 && (y + 2) < imgh && (y - 1) >= 0) {
-		/* red at red */
-		out[(y + 1) * elemCols + (x + 1) * bpp + RED] =
-				PIX(in, x + 1, y + 1, imgw);
-		/* green at red */
-		out[(y + 1) * elemCols + (x + 1) * bpp + GREEN] =
-				INTERPOLATE_HV(in, x + 1, y + 1, imgw);
-		/* blue at red */
-		out[(y + 1) * elemCols + (x + 1) * bpp + BLUE] =
-				INTERPOLATE_X(in, x + 1, y + 1, imgw);
+		/* Red */
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + RED] =
+				PIX(in, x + r.x, y + r.y, imgw);
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + GREEN] =
+				INTERPOLATE_HV(in, x + r.x, y + r.y, imgw);
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + BLUE] =
+				INTERPOLATE_X(in, x + r.x, y + r.y, imgw);
 
-		/* red at lower left green */
-		out[(y + 1) * elemCols + x * bpp + RED] =
-				INTERPOLATE_H(in, x, y + 1, imgw);
-		/* green at lower left green */
-		out[(y + 1) * elemCols + x * bpp + GREEN] =
-				PIX(in, x, y + 1, imgw);
-		/* blue at lower left green */
-		out[(y + 1) * elemCols + x * bpp + BLUE] =
-				INTERPOLATE_V(in, x, y + 1, imgw);
+		/* Green on a red line */
+		out[(y + gr.y) * elemCols + (x + gr.x) * bpp + RED] =
+				INTERPOLATE_H(in, x + gr.x, y + gr.y, imgw);
+		out[(y + gr.y) * elemCols + (x + gr.x) * bpp + GREEN] =
+				PIX(in, x + gr.x, y + gr.y, imgw);
+		out[(y + gr.y) * elemCols + (x + gr.x) * bpp + BLUE] =
+				INTERPOLATE_V(in, x + gr.x, y + gr.y, imgw);
 
-		/* red at upper right green */
-		out[y * elemCols + (x + 1) * bpp + RED] =
-				INTERPOLATE_V(in, x + 1, y, imgw);
-		/* green at upper right green */
-		out[y * elemCols + (x + 1) * bpp + GREEN] =
-				PIX(in, x + 1, y, imgw);
-		/* blue at upper right green */
-		out[y * elemCols + (x + 1) * bpp + BLUE] =
-				INTERPOLATE_H(in, x + 1, y, imgw);
+		/* Green on a blue line */
+		out[(y + gb.y) * elemCols + (x + gb.x) * bpp + RED] =
+				INTERPOLATE_V(in, x + gb.x, y + gb.y, imgw);
+		out[(y + gb.y) * elemCols + (x + gb.x) * bpp + GREEN] =
+				PIX(in, x + gb.x, y + gb.y, imgw);
+		out[(y + gb.y) * elemCols + (x + gb.x) * bpp + BLUE] =
+				INTERPOLATE_H(in, x + gb.x, y + gb.y, imgw);
 
-		/* red at blue */
-		out[y * elemCols + x * bpp + RED] =
-				INTERPOLATE_X(in, x, y, imgw);
-		/* green at blue */
-		out[y * elemCols + x * bpp + GREEN] =
-				INTERPOLATE_HV(in, x, y, imgw);
-		/* blue at blue */
-		out[y * elemCols + x * bpp + BLUE] =
-				PIX(in, x, y, imgw);
+		/* Blue */
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + RED] =
+				INTERPOLATE_X(in, x + b.x, y + b.y, imgw);
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + GREEN] =
+				INTERPOLATE_HV(in, x + b.x, y + b.y, imgw);
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + BLUE] =
+				PIX(in, x + b.x, y + b.y, imgw);
 
 		if (bpp == 4) {
 			out[y * elemCols + x * bpp + 3] = 255;
@@ -168,7 +168,9 @@ cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 			gpu_vars->streams[gpu_vars->cnt]
 		>>>(gpu_vars->d_input[gpu_vars->cnt],
 			gpu_vars->d_bilinear[gpu_vars->cnt],
-			gpu_vars->width, gpu_vars->height, gpu_vars->bpp);
+			gpu_vars->width, gpu_vars->height, gpu_vars->bpp,
+			gpu_vars->pos_r, gpu_vars->pos_gr,
+			gpu_vars->pos_gb, gpu_vars->pos_b);
 
 	if (get_dev_ptr) {
 		*output = (uint8_t *)gpu_vars->d_bilinear[gpu_vars->cnt];
@@ -250,7 +252,29 @@ cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
 	gpu_vars->bpp = bpp;
 
 	switch (format) {
+	case V4L2_PIX_FMT_SBGGR8:
+		gpu_vars->pos_r = make_int2(0, 0);
+		gpu_vars->pos_gr = make_int2(1, 0);
+		gpu_vars->pos_gb = make_int2(0, 1);
+		gpu_vars->pos_b = make_int2(1, 1);
+		break;
+	case V4L2_PIX_FMT_SGBRG8:
+		gpu_vars->pos_r = make_int2(1, 0);
+		gpu_vars->pos_gr = make_int2(0, 0);
+		gpu_vars->pos_gb = make_int2(1, 1);
+		gpu_vars->pos_b = make_int2(0, 1);
+		break;
+	case V4L2_PIX_FMT_SGRBG8:
+		gpu_vars->pos_r = make_int2(0, 1);
+		gpu_vars->pos_gr = make_int2(1, 1);
+		gpu_vars->pos_gb = make_int2(0, 0);
+		gpu_vars->pos_b = make_int2(1, 0);
+		break;
 	case V4L2_PIX_FMT_SRGGB8:
+		gpu_vars->pos_r = make_int2(1, 1);
+		gpu_vars->pos_gr = make_int2(0, 1);
+		gpu_vars->pos_gb = make_int2(1, 0);
+		gpu_vars->pos_b = make_int2(0, 0);
 		break;
 	default:
 		fprintf(stderr, "unsupported pixel format\n");
