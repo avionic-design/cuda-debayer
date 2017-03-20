@@ -13,6 +13,8 @@
  * Compute Capability 3.0 or higher required
  */
 
+#include <linux/videodev2.h>
+
 #include "bayer2rgb.h"
 #include "bayer2rgb_kernel.h"
 
@@ -229,7 +231,7 @@ cudaError_t alloc_create_cuda_data(struct cuda_vars *gpu_vars, uint8_t cnt)
 }
 
 cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
-		uint32_t height, uint8_t bpp)
+		uint32_t height, uint8_t bpp, uint32_t format)
 {
 	struct cuda_vars *gpu_vars;
 	cudaError_t ret_val;
@@ -246,6 +248,15 @@ cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
 	gpu_vars->height = height;
 	gpu_vars->cnt = 0;
 	gpu_vars->bpp = bpp;
+
+	switch (format) {
+	case V4L2_PIX_FMT_SRGGB8:
+		break;
+	default:
+		fprintf(stderr, "unsupported pixel format\n");
+		ret_val = cudaErrorInvalidValue;
+		goto cleanup;
+	}
 
 	for (i = 0; i < 2; i++) {
 		ret_val = alloc_create_cuda_data(gpu_vars, i);

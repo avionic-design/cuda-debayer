@@ -21,7 +21,7 @@
 struct cuda_vars;
 
 cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars, uint32_t width,
-		uint32_t height, uint8_t bpp);
+		uint32_t height, uint8_t bpp, uint32_t format);
 cudaError_t bayer2rgb_free(struct cuda_vars *gpu_vars);
 
 cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,

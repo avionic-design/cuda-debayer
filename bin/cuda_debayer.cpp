@@ -207,7 +207,8 @@ int main(int argc, char **argv)
 
 	ret_cuda = bayer2rgb_init(&gpu_vars,
 			camera_device_get_width(cam_vars),
-			camera_device_get_height(cam_vars), 4);
+			camera_device_get_height(cam_vars), 4,
+			camera_device_get_pixelformat(cam_vars));
 	if (ret_cuda != cudaSuccess) {
 		ret_val = -EINVAL;
 		goto cleanup;
