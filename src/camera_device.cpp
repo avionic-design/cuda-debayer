@@ -521,6 +521,14 @@ unsigned int camera_device_get_height(struct camera_vars *cam_vars)
 	return cam_vars->format.fmt.pix.height;
 }
 
+uint32_t camera_device_get_pixelformat(struct camera_vars *cam_vars)
+{
+	if (cam_vars == NULL)
+		return 0;
+
+	return cam_vars->format.fmt.pix.pixelformat;
+}
+
 int camera_device_init(struct camera_vars **cam_vars_p,
 		std::string dev_name, int exposure, int gain)
 {

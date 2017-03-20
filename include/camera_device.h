@@ -14,6 +14,7 @@
 #ifndef CAMERA_DEVICE_H
 #define CAMERA_DEVICE_H
 
+#include <stdint.h>
 #include <string.h>
 
 /*
@@ -41,5 +42,6 @@ int camera_device_read_frame(struct camera_vars *device_vars,
 
 unsigned int camera_device_get_width(struct camera_vars *device_vars);
 unsigned int camera_device_get_height(struct camera_vars *device_vars);
+uint32_t camera_device_get_pixelformat(struct camera_vars *device_vars);
 
 #endif
