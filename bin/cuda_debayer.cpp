@@ -13,10 +13,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string>
+#include <string.h>
 #include <errno.h>
 #include <getopt.h>
 #include <unistd.h>
+
+#include <string>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -73,7 +75,7 @@ static void usage(FILE *fp, const char *argv)
 int main(int argc, char **argv)
 {
 	const std::string window = "Display";
-	std::string dev_name = "/dev/video0";
+	const char *dev_name = "/dev/video0";
 	struct camera_vars *cam_vars = NULL;
 	cudaError_t ret_cuda = cudaSuccess;
 	struct cuda_vars *gpu_vars = NULL;
@@ -118,9 +120,9 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'd':
 			dev_name = optarg;
-			if (access(dev_name.c_str(), F_OK) == -1) {
+			if (access(dev_name, F_OK) == -1) {
 				printf("device %s does not exist\n",
-						dev_name.c_str());
+						dev_name);
 				return EXIT_FAILURE;
 			}
 			break;

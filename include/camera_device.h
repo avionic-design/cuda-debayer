@@ -15,7 +15,6 @@
 #define CAMERA_DEVICE_H
 
 #include <stdint.h>
-#include <string.h>
 
 /*
  * exposure time has no unit because it is not documented
@@ -34,7 +33,7 @@ struct camera_vars;
 typedef unsigned char uchar;
 
 int camera_device_init(struct camera_vars **device_vars,
-		std::string dev_name, int exposure, int gain);
+		const char *dev_name, int exposure, int gain);
 int camera_device_done(struct camera_vars *device_vars);
 
 int camera_device_read_frame(struct camera_vars *device_vars,

@@ -17,14 +17,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <linux/videodev2.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-
-#include <iostream>
 
 #include "camera_device.h"
 
@@ -383,7 +382,7 @@ cleanup:
 }
 
 static int init_device(struct camera_vars *cam_vars,
-		std::string dev_name)
+		const char *dev_name)
 {
 	struct v4l2_capability cap;
 	struct v4l2_format format;
@@ -397,7 +396,7 @@ static int init_device(struct camera_vars *cam_vars,
 	if (xioctl(cam_vars->fd, VIDIOC_QUERYCAP, &cap) == -1) {
 		if (errno == EINVAL) {
 			fprintf(stderr, "%s is no V4L2 device\n",
-					dev_name.c_str());
+					dev_name);
 		} else {
 			perror("VIDIOC_QUERYCAP");
 		}
@@ -406,13 +405,13 @@ static int init_device(struct camera_vars *cam_vars,
 
 	if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
 		fprintf(stderr, "%s is no video capture device\n",
-				dev_name.c_str());
+				dev_name);
 		return -errno;
 	}
 
 	if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
 		fprintf(stderr, "%s does not support streaming i/o\n",
-				dev_name.c_str());
+				dev_name);
 		return -errno;
 	}
 
@@ -479,26 +478,26 @@ static int close_device(int fd)
 	return 0;
 }
 
-static int open_device(std::string dev_name, int *fd)
+static int open_device(const char *dev_name, int *fd)
 {
 	struct stat status;
 
-	if (stat(dev_name.c_str(), &status) == -1) {
+	if (stat(dev_name, &status) == -1) {
 		fprintf(stderr, "Cannot identify '%s': %d, %s\n",
-				dev_name.c_str(), errno, strerror(errno));
+				dev_name, errno, strerror(errno));
 		return -errno;
 	}
 
 	if (!S_ISCHR(status.st_mode)) {
-		fprintf(stderr, "%s is no device\n", dev_name.c_str());
+		fprintf(stderr, "%s is no device\n", dev_name);
 		return -errno;
 	}
 
-	*fd = open(dev_name.c_str(), O_RDWR | O_NONBLOCK, 0);
+	*fd = open(dev_name, O_RDWR | O_NONBLOCK, 0);
 
 	if (*fd == -1) {
 		fprintf(stderr, "Cannot open '%s': %d, %s\n",
-				dev_name.c_str(), errno, strerror(errno));
+				dev_name, errno, strerror(errno));
 		return -errno;
 	}
 
@@ -530,7 +529,7 @@ uint32_t camera_device_get_pixelformat(struct camera_vars *cam_vars)
 }
 
 int camera_device_init(struct camera_vars **cam_vars_p,
-		std::string dev_name, int exposure, int gain)
+		const char  *dev_name, int exposure, int gain)
 {
 	struct camera_vars *cam_vars;
 	int ret_val = 0;
