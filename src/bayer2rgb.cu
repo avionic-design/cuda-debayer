@@ -13,10 +13,9 @@
  * Compute Capability 3.0 or higher required
  */
 
-#include <linux/videodev2.h>
-
 #include "bayer2rgb.h"
 #include "bayer2rgb_kernel.h"
+#include "camera_device.h"
 
 #define LEFT(x, y, imgw)	((x) - 1 + (y) * (imgw))
 #define RIGHT(x, y, imgw)	((x) + 1 + (y) * (imgw))
@@ -51,6 +50,7 @@
 struct cuda_vars {
 	cudaArray *data[2];
 
+	bayer_to_rgb_t kernel;
 	dim3 threads_p_block;
 	dim3 blocks_p_grid;
 
@@ -145,6 +145,65 @@ __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 	}
 }
 
+/**
+ * CUDA kernel for bayer with infrared to RGB
+ *
+ * This handle the conversion for bayer pattern that have infrared instead
+ * of a second green pixel. The pattern look like this:
+ *
+ * R I or I R or B G or G B
+ * G B    B G    I R    R I
+ *
+ */
+__global__ void bayer_ir_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
+		uint32_t imgh, uint8_t bpp, int2 r, int2 ir, int2 g, int2 b)
+{
+	int x = 2 * ((blockDim.x * blockIdx.x) + threadIdx.x) + 1;
+	int y = 2 * ((blockDim.y * blockIdx.y) + threadIdx.y) + 1;
+	int elemCols = imgw * bpp;
+
+	if ((x + 2) < imgw && (x - 1) >= 0 && (y + 2) < imgh && (y - 1) >= 0) {
+		/* Red */
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + RED] =
+				PIX(in, x + r.x, y + r.y, imgw);
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + GREEN] =
+				INTERPOLATE_V(in, x + r.x, y + r.y, imgw);
+		out[(y + r.y) * elemCols + (x + r.x) * bpp + BLUE] =
+				INTERPOLATE_X(in, x + r.x, y + r.y, imgw);
+
+		/* Infrared */
+		out[(y + ir.y) * elemCols + (x + ir.x) * bpp + RED] =
+				INTERPOLATE_H(in, x + ir.x, y + ir.y, imgw);
+		out[(y + ir.y) * elemCols + (x + ir.x) * bpp + GREEN] =
+				INTERPOLATE_X(in, x + ir.x, y + ir.y, imgw);
+		out[(y + ir.y) * elemCols + (x + ir.x) * bpp + BLUE] =
+				INTERPOLATE_V(in, x + ir.x, y + ir.y, imgw);
+
+		/* Green */
+		out[(y + g.y) * elemCols + (x + g.x) * bpp + RED] =
+				INTERPOLATE_V(in, x + g.x, y + g.y, imgw);
+		out[(y + g.y) * elemCols + (x + g.x) * bpp + GREEN] =
+				PIX(in, x + g.x, y + g.y, imgw);
+		out[(y + g.y) * elemCols + (x + g.x) * bpp + BLUE] =
+				INTERPOLATE_H(in, x + g.x, y + g.y, imgw);
+
+		/* Blue */
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + RED] =
+				INTERPOLATE_X(in, x + b.x, y + b.y, imgw);
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + GREEN] =
+				INTERPOLATE_H(in, x + b.x, y + b.y, imgw);
+		out[(y + b.y) * elemCols + (x + b.x) * bpp + BLUE] =
+				PIX(in, x + b.x, y + b.y, imgw);
+
+		if (bpp == 4) {
+			out[y * elemCols + x * bpp + 3] = 255;
+			out[y * elemCols + (x + 1) * bpp + 3] = 255;
+			out[(y + 1) * elemCols + x * bpp + 3] = 255;
+			out[(y + 1) * elemCols + (x + 1) * bpp + 3] = 255;
+		}
+	}
+}
+
 cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 		uint8_t **output, cudaStream_t *stream, bool get_dev_ptr)
 {
@@ -163,7 +222,7 @@ cudaError_t bayer2rgb_process(struct cuda_vars *gpu_vars, const void *p,
 		return ret_val;
 	}
 
-	bayer_to_rgb<<<gpu_vars->blocks_p_grid,
+	gpu_vars->kernel<<<gpu_vars->blocks_p_grid,
 			gpu_vars->threads_p_block, 0,
 			gpu_vars->streams[gpu_vars->cnt]
 		>>>(gpu_vars->d_input[gpu_vars->cnt],
@@ -250,26 +309,35 @@ cudaError_t bayer2rgb_init(struct cuda_vars **gpu_vars_p, uint32_t width,
 	gpu_vars->height = height;
 	gpu_vars->cnt = 0;
 	gpu_vars->bpp = bpp;
+	gpu_vars->kernel = bayer_to_rgb;
 
 	switch (format) {
+	case V4L2_PIX_FMT_SBGIR8:
+		gpu_vars->kernel = bayer_ir_to_rgb;
 	case V4L2_PIX_FMT_SBGGR8:
 		gpu_vars->pos_r = make_int2(0, 0);
 		gpu_vars->pos_gr = make_int2(1, 0);
 		gpu_vars->pos_gb = make_int2(0, 1);
 		gpu_vars->pos_b = make_int2(1, 1);
 		break;
+	case V4L2_PIX_FMT_SGBRI8:
+		gpu_vars->kernel = bayer_ir_to_rgb;
 	case V4L2_PIX_FMT_SGBRG8:
 		gpu_vars->pos_r = make_int2(1, 0);
 		gpu_vars->pos_gr = make_int2(0, 0);
 		gpu_vars->pos_gb = make_int2(1, 1);
 		gpu_vars->pos_b = make_int2(0, 1);
 		break;
+	case V4L2_PIX_FMT_SIRBG8:
+		gpu_vars->kernel = bayer_ir_to_rgb;
 	case V4L2_PIX_FMT_SGRBG8:
 		gpu_vars->pos_r = make_int2(0, 1);
 		gpu_vars->pos_gr = make_int2(1, 1);
 		gpu_vars->pos_gb = make_int2(0, 0);
 		gpu_vars->pos_b = make_int2(1, 0);
 		break;
+	case V4L2_PIX_FMT_SRIGB8:
+		gpu_vars->kernel = bayer_ir_to_rgb;
 	case V4L2_PIX_FMT_SRGGB8:
 		gpu_vars->pos_r = make_int2(1, 1);
 		gpu_vars->pos_gr = make_int2(0, 1);

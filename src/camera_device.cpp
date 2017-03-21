@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <linux/videodev2.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -435,6 +434,18 @@ static int init_device(struct camera_vars *cam_vars,
 		break;
 	case V4L2_PIX_FMT_SRGGB8:
 		fmt_name = "RGGB";
+		break;
+	case V4L2_PIX_FMT_SBGIR8:
+		fmt_name = "BGIR";
+		break;
+	case V4L2_PIX_FMT_SGBRI8:
+		fmt_name = "GBRI";
+		break;
+	case V4L2_PIX_FMT_SIRBG8:
+		fmt_name = "IRBG";
+		break;
+	case V4L2_PIX_FMT_SRIGB8:
+		fmt_name = "RIGB";
 		break;
 	default:
 		fmt_name = "unknown";

@@ -14,6 +14,9 @@
 
 #include <cuda_runtime.h>
 
+typedef void (*bayer_to_rgb_t)(uint8_t *in, uint8_t *out, uint32_t imgw,
+		uint32_t imgh, uint8_t bpp, int2 r, int2 gr, int2 gb, int2 b);
+
 /**
  * CUDA Kernel Device code for RGGB
  *
@@ -22,5 +25,8 @@
  */
 __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 		uint32_t imgh, uint8_t bpp, int2 r, int2 gr, int2 gb, int2 b);
+
+__global__ void bayer_ir_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
+		uint32_t imgh, uint8_t bpp, int2 r, int2 ir, int2 g, int2 b);
 
 #endif

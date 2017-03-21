@@ -15,6 +15,14 @@
 #define CAMERA_DEVICE_H
 
 #include <stdint.h>
+#include <linux/videodev2.h>
+
+#ifndef V4L2_PIX_FMT_SBGIR8
+#define V4L2_PIX_FMT_SBGIR8  v4l2_fourcc('I', 'R', '8', '1') /*  8  BGBG.. IRIR.. */
+#define V4L2_PIX_FMT_SGBRI8  v4l2_fourcc('G', 'B', 'R', 'I') /*  8  GBGB.. RIRI.. */
+#define V4L2_PIX_FMT_SIRBG8  v4l2_fourcc('I', 'R', 'B', 'G') /*  8  IRIR.. BGBG.. */
+#define V4L2_PIX_FMT_SRIGB8  v4l2_fourcc('R', 'I', 'G', 'B') /*  8  RIRI.. GBGB.. */
+#endif
 
 /*
  * exposure time has no unit because it is not documented
