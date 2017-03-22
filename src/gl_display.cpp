@@ -146,6 +146,37 @@ static int compile_GLSL_program(GLuint *program_p)
 	return 0;
 }
 
+static void reshape_window(int win_width, int win_height)
+{
+	gl_display_vars *gl_vars = (gl_display_vars *)glutGetWindowData();
+	float ratio = (float)gl_vars->width / (float)gl_vars->height;
+	int x, y, width, height;
+
+	/* Compute the new size respecting the original aspect ratio */
+	width = win_width;
+	height = win_width / ratio;
+	if (height > win_height) {
+		width = win_height * ratio;
+		height = win_height;
+	}
+
+	/* Center the view in the window */
+	x = (width < win_width) ? (win_width - width) / 2 : 0;
+	y = (height < win_height) ? (win_height - height) / 2 : 0;
+
+	/* Apply the new view */
+	glViewport(x, y, width, height);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(60.0, (GLfloat)width / (GLfloat)height, 0.1f, 10.0f);
+	glMatrixMode(GL_MODELVIEW);
+}
+
+static void display_window(void)
+{
+	/* Nothing to do here, but glut require this callback. */
+}
+
 static bool initGL(gl_display_vars *gl_vars, float scale, int *argc,
 		char **argv)
 {
@@ -157,6 +188,9 @@ static bool initGL(gl_display_vars *gl_vars, float scale, int *argc,
 	glutInitDisplayMode(GLUT_RGBA | GLUT_ALPHA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(gl_vars->width * scale, gl_vars->height * scale);
 	gl_vars->GLUT_window_handle = glutCreateWindow("Debayer Frames");
+	glutDisplayFunc(display_window);
+	glutReshapeFunc(reshape_window);
+	glutSetWindowData(gl_vars);
 
 	check_gl_error(__LINE__, "error during create GL context");
 
@@ -179,13 +213,6 @@ static bool initGL(gl_display_vars *gl_vars, float scale, int *argc,
 	glClearColor(0.5, 0.5, 0.5, 1.0);
 
 	glDisable(GL_DEPTH_TEST);
-
-	glViewport(0, 0, gl_vars->width * scale, gl_vars->height * scale);
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(60.0, (GLfloat)(gl_vars->width * scale) /
-			(GLfloat)(gl_vars->height * scale), 0.1f, 10.0f);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -404,6 +431,9 @@ int gl_display_show(gl_display_vars *gl_vars, uint32_t *odata,
 	 * are done
 	 */
 	glutSwapBuffers();
+
+	/* Let glut run its event handlers */
+	glutMainLoopEvent();
 
 	return 0;
 }
