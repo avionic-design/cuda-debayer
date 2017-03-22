@@ -44,7 +44,7 @@
 
 enum display_type{NOT, OPENCV, OPENGL};
 
-static const char short_options[] = "d:e:g:ho:s:";
+static const char short_options[] = "d:e:g:ho:s:t";
 
 static const struct option long_options[] = {
 	{"device",	required_argument,	NULL, 'd'},
@@ -53,6 +53,7 @@ static const struct option long_options[] = {
 	{"help",	no_argument,		NULL, 'h'},
 	{"output",	required_argument,	NULL, 'o'},
 	{"scale",	required_argument,	NULL, 's'},
+	{"thermal",	no_argument,		NULL, 't'},
 	{0, 0, 0, 0 }
 };
 
@@ -61,7 +62,8 @@ static void usage(FILE *fp, const char *argv)
 	fprintf(fp,
 		"Usage: %s [-h|--help] \n"
 		"   or: %s [-d|--device=/dev/video0] [-e|--exposure=30000] \n"
-		"		[-g|--gain=100] [-s|--scale=1] [-o|--output=opengl]\n\n"
+		"		[-g|--gain=100] [-s|--scale=1] [-o|--output=opengl]\n"
+		"		[-t|--thermal]\n\n"
 		"Options:\n"
 		"-d | --device        Video device name [default:/dev/video0]\n"
 		"-e | --exposure      Set exposure time [1..199000; default: 30000]\n"
@@ -69,6 +71,7 @@ static void usage(FILE *fp, const char *argv)
 		"-h | --help          Print this message\n"
 		"-o | --output        Outputs stream over OpenCV/OpenGL [opencv, opengl; default: opengl]\n"
 		"-s | --scale         Decreasing size by factor [1..%i; default: 1]\n"
+		"-t | --thermal       Display a thermogram if the sensor support IR\n"
 		"",
 		argv, argv, MAX_DECREASE);
 }
@@ -83,6 +86,7 @@ int main(int argc, char **argv)
 	cudaStream_t stream = NULL;
 	uint8_t displayed = NOT;
 	int exposure = 30000;
+	bool thermal = false;
 	int ret_val = 0;
 	uint8_t *output;
 	long int l_int;
@@ -195,6 +199,9 @@ int main(int argc, char **argv)
 #endif
 			break;
 
+		case 't':
+			thermal = true;
+			break;
 		default:
 			usage(stderr, argv[0]);
 			return EXIT_FAILURE;
@@ -211,7 +218,8 @@ int main(int argc, char **argv)
 	ret_cuda = bayer2rgb_init(&gpu_vars,
 			camera_device_get_width(cam_vars),
 			camera_device_get_height(cam_vars), 4,
-			camera_device_get_pixelformat(cam_vars));
+			camera_device_get_pixelformat(cam_vars),
+			thermal);
 	if (ret_cuda != cudaSuccess) {
 		ret_val = -EINVAL;
 		goto cleanup;

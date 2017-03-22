@@ -29,4 +29,7 @@ __global__ void bayer_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 __global__ void bayer_ir_to_rgb(uint8_t *in, uint8_t *out, uint32_t imgw,
 		uint32_t imgh, uint8_t bpp, int2 r, int2 ir, int2 g, int2 b);
 
+__global__ void bayer_ir_to_thermal(uint8_t *in, uint8_t *out, uint32_t imgw,
+		uint32_t imgh, uint8_t bpp, int2 r, int2 ir, int2 g, int2 b);
+
 #endif
